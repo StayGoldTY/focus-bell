@@ -19,6 +19,14 @@ class FocusBellApp extends ConsumerWidget {
       theme: AppTheme.light(colorScheme),
       darkTheme: AppTheme.dark(colorScheme),
       routerConfig: appRouter,
+      builder: (context, child) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
