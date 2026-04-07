@@ -1,0 +1,33 @@
+name: focus_bell
+description: "FocusBell - 基于神经科学的专注力训练应用"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.8.1
+  just_audio: ^0.9.42
+  shared_preferences: ^2.3.4
+  google_fonts: ^6.2.1
+  dio: ^5.7.0
+  path_provider: ^2.1.5
+  url_launcher: ^6.3.1
+  flutter_animate: ^4.5.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/sounds/
+    - assets/images/
+    - assets/animations/
