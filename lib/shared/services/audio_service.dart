@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../core/constants/sound_data.dart';
+import 'web_audio_stub.dart' if (dart.library.html) 'web_audio.dart';
 
 final audioServiceProvider = Provider<AudioService>((ref) {
   return AudioService();
@@ -19,51 +21,54 @@ class AudioService {
     _ambientPlayer = AudioPlayer();
   }
 
-  /// 播放内置提示音（通过合成正弦波音频）
   Future<void> playBuiltInSound(BuiltInSound sound, {double volume = 0.7}) async {
     try {
+      if (kIsWeb) {
+        playToneOnWeb(sound.frequency.toDouble(), sound.durationSeconds, volume);
+        return;
+      }
       _alertPlayer?.stop();
       _alertPlayer = AudioPlayer();
       await _alertPlayer!.setVolume(volume);
-
       final audioData = _generateToneWav(
         frequency: sound.frequency.toDouble(),
         durationSeconds: sound.durationSeconds,
         sampleRate: 44100,
       );
-
       final source = _WavAudioSource(audioData);
       await _alertPlayer!.setAudioSource(source);
       await _alertPlayer!.play();
-    } catch (_) {
-      // 静默处理音频错误，不影响计时器运行
+    } catch (e) {
+      debugPrint('AudioService.playBuiltInSound error: $e');
     }
   }
 
-  /// 播放指定频率的简单提示音
   Future<void> playTone({
     double frequency = 440,
     double durationSeconds = 1.0,
     double volume = 0.7,
   }) async {
     try {
+      if (kIsWeb) {
+        playToneOnWeb(frequency, durationSeconds, volume);
+        return;
+      }
       _alertPlayer?.stop();
       _alertPlayer = AudioPlayer();
       await _alertPlayer!.setVolume(volume);
-
       final audioData = _generateToneWav(
         frequency: frequency,
         durationSeconds: durationSeconds,
         sampleRate: 44100,
       );
-
       final source = _WavAudioSource(audioData);
       await _alertPlayer!.setAudioSource(source);
       await _alertPlayer!.play();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('AudioService.playTone error: $e');
+    }
   }
 
-  /// 生成白/棕/粉噪音并循环播放
   Future<void> playNoise({
     required NoiseType type,
     double volume = 0.5,
@@ -72,13 +77,14 @@ class AudioService {
       await stopAmbient();
       _ambientPlayer = AudioPlayer();
       await _ambientPlayer!.setVolume(volume);
-
       final audioData = _generateNoiseWav(type: type, durationSeconds: 10, sampleRate: 44100);
       final source = _WavAudioSource(audioData);
       await _ambientPlayer!.setAudioSource(source);
       await _ambientPlayer!.setLoopMode(LoopMode.one);
       await _ambientPlayer!.play();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('AudioService.playNoise error: $e');
+    }
   }
 
   Future<void> setAlertVolume(double volume) async {
@@ -100,6 +106,14 @@ class AudioService {
   Future<void> stopAll() async {
     await stopAlert();
     await stopAmbient();
+  }
+
+  void requestWakeLock() {
+    if (kIsWeb) requestWakeLockOnWeb();
+  }
+
+  void releaseWakeLock() {
+    if (kIsWeb) releaseWakeLockOnWeb();
   }
 
   void dispose() {
