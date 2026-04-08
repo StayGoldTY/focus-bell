@@ -1,46 +1,158 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="/focus-bell/">
-
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
+  <meta name="description" content="FocusBell - 基于神经科学的专注训练">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="focus_bell">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FocusBell">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>focus_bell</title>
+  <title>FocusBell</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #ECEAF4;
+    }
+    @media (prefers-color-scheme: dark) {
+      html, body { background: #1C1B1F; }
+    }
+    @media (min-width: 481px) {
+      flutter-view {
+        width: 480px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+      }
+    }
+  </style>
+
+  <script>
+    // === Web Audio API ===
+    var _fbAudioCtx = null;
+    var _fbAudioUnlocked = false;
+
+    function _ensureAudioCtx() {
+      if (!_fbAudioCtx || _fbAudioCtx.state === 'closed') {
+        _fbAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (_fbAudioCtx.state === 'suspended') {
+        _fbAudioCtx.resume();
+      }
+      return _fbAudioCtx;
+    }
+
+    // Browsers require AudioContext creation/resume during a user gesture.
+    // Pre-initialize on first interaction so later timer-triggered calls work.
+    ['click', 'touchstart', 'keydown'].forEach(function(evt) {
+      document.addEventListener(evt, function unlock() {
+        _ensureAudioCtx();
+        _fbAudioUnlocked = true;
+        document.removeEventListener(evt, unlock);
+      }, { once: true });
+    });
+
+    function playFocusBellTone(frequency, duration, volume) {
+      try {
+        var ctx = _ensureAudioCtx();
+        var now = ctx.currentTime;
+        var safeVol = Math.max(volume, 0.001);
+
+        function makeOsc(freq, vol) {
+          var osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(Math.max(vol, 0.001), now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + duration);
+          osc.connect(g);
+          g.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + duration + 0.05);
+        }
+
+        makeOsc(frequency, safeVol);
+        makeOsc(frequency * 2, safeVol * 0.4);
+        makeOsc(frequency * 3, safeVol * 0.15);
+      } catch (e) {
+        console.warn('playFocusBellTone error:', e);
+      }
+    }
+
+    // === Wake Lock API ===
+    var _fbWakeLock = null;
+    var _fbWakeLockDesired = false;
+
+    async function requestFocusWakeLock() {
+      _fbWakeLockDesired = true;
+      try {
+        if ('wakeLock' in navigator) {
+          _fbWakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (e) {}
+    }
+
+    function releaseFocusWakeLock() {
+      _fbWakeLockDesired = false;
+      try {
+        if (_fbWakeLock) {
+          _fbWakeLock.release();
+          _fbWakeLock = null;
+        }
+      } catch (e) {}
+    }
+
+    // Re-acquire wake lock when page becomes visible (browser releases it on hide)
+    document.addEventListener('visibilitychange', async function() {
+      if (document.visibilityState === 'visible' && _fbWakeLockDesired) {
+        try {
+          if ('wakeLock' in navigator) {
+            _fbWakeLock = await navigator.wakeLock.request('screen');
+          }
+        } catch (e) {}
+      }
+    });
+
+    // === Center flutter-view on wide screens ===
+    function _centerFlutterView() {
+      var fv = document.querySelector('flutter-view');
+      if (!fv) return;
+      if (window.innerWidth > 480) {
+        fv.style.setProperty('width', '480px', 'important');
+        fv.style.setProperty('left', '50%', 'important');
+        fv.style.setProperty('right', 'auto', 'important');
+        fv.style.setProperty('transform', 'translateX(-50%)', 'important');
+      } else {
+        fv.style.removeProperty('width');
+        fv.style.removeProperty('left');
+        fv.style.removeProperty('right');
+        fv.style.removeProperty('transform');
+      }
+    }
+
+    var _fvInitObserver = new MutationObserver(function() {
+      var fv = document.querySelector('flutter-view');
+      if (fv) {
+        _fvInitObserver.disconnect();
+        _centerFlutterView();
+        new MutationObserver(_centerFlutterView)
+          .observe(fv, { attributes: true, attributeFilter: ['style'] });
+        window.addEventListener('resize', _centerFlutterView);
+      }
+    });
+    _fvInitObserver.observe(document.body, { childList: true, subtree: true });
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
