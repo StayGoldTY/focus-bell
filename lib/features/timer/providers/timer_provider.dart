@@ -7,8 +7,9 @@ import '../../../shared/services/audio_service.dart';
 import '../../../shared/services/storage_service.dart';
 import '../models/timer_state.dart';
 
-final timerProvider =
-    StateNotifierProvider<TimerNotifier, FocusTimerState>((ref) {
+final timerProvider = StateNotifierProvider<TimerNotifier, FocusTimerState>((
+  ref,
+) {
   return TimerNotifier(ref);
 });
 
@@ -58,7 +59,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   void _onAppResumed() {
-    final phase = this.state.phase;
+    final phase = state.phase;
     if (phase != TimerPhase.idle && phase != TimerPhase.paused) {
       _tick();
     }
@@ -119,10 +120,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       _scheduleNextBell();
     }
 
-    state = state.copyWith(
-      phase: target,
-      pausedFromPhase: () => null,
-    );
+    state = state.copyWith(phase: target, pausedFromPhase: () => null);
     _startTicker();
   }
 

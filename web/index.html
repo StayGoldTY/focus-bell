@@ -26,14 +26,6 @@
     @media (prefers-color-scheme: dark) {
       html, body { background: #1C1B1F; }
     }
-    @media (min-width: 481px) {
-      flutter-view {
-        width: 480px !important;
-        left: 50% !important;
-        right: auto !important;
-        transform: translateX(-50%) !important;
-      }
-    }
   </style>
 
   <script>
@@ -121,35 +113,6 @@
         } catch (e) {}
       }
     });
-
-    // === Center flutter-view on wide screens ===
-    function _centerFlutterView() {
-      var fv = document.querySelector('flutter-view');
-      if (!fv) return;
-      if (window.innerWidth > 480) {
-        fv.style.setProperty('width', '480px', 'important');
-        fv.style.setProperty('left', '50%', 'important');
-        fv.style.setProperty('right', 'auto', 'important');
-        fv.style.setProperty('transform', 'translateX(-50%)', 'important');
-      } else {
-        fv.style.removeProperty('width');
-        fv.style.removeProperty('left');
-        fv.style.removeProperty('right');
-        fv.style.removeProperty('transform');
-      }
-    }
-
-    var _fvInitObserver = new MutationObserver(function() {
-      var fv = document.querySelector('flutter-view');
-      if (fv) {
-        _fvInitObserver.disconnect();
-        _centerFlutterView();
-        new MutationObserver(_centerFlutterView)
-          .observe(fv, { attributes: true, attributeFilter: ['style'] });
-        window.addEventListener('resize', _centerFlutterView);
-      }
-    });
-    _fvInitObserver.observe(document.body, { childList: true, subtree: true });
   </script>
 </head>
 <body>
