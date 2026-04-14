@@ -21,10 +21,17 @@ class AudioService {
     _ambientPlayer = AudioPlayer();
   }
 
-  Future<void> playBuiltInSound(BuiltInSound sound, {double volume = 0.7}) async {
+  Future<void> playBuiltInSound(
+    BuiltInSound sound, {
+    double volume = 0.7,
+  }) async {
     try {
       if (kIsWeb) {
-        playToneOnWeb(sound.frequency.toDouble(), sound.durationSeconds, volume);
+        playToneOnWeb(
+          sound.frequency.toDouble(),
+          sound.durationSeconds,
+          volume,
+        );
         return;
       }
       _alertPlayer?.stop();
@@ -69,21 +76,44 @@ class AudioService {
     }
   }
 
-  Future<void> playNoise({
-    required NoiseType type,
-    double volume = 0.5,
-  }) async {
+  Future<void> playNoise({required NoiseType type, double volume = 0.5}) async {
     try {
       await stopAmbient();
       _ambientPlayer = AudioPlayer();
       await _ambientPlayer!.setVolume(volume);
-      final audioData = _generateNoiseWav(type: type, durationSeconds: 10, sampleRate: 44100);
+      final audioData = _generateNoiseWav(
+        type: type,
+        durationSeconds: 10,
+        sampleRate: 44100,
+      );
       final source = _WavAudioSource(audioData);
       await _ambientPlayer!.setAudioSource(source);
       await _ambientPlayer!.setLoopMode(LoopMode.one);
       await _ambientPlayer!.play();
     } catch (e) {
       debugPrint('AudioService.playNoise error: $e');
+    }
+  }
+
+  Future<void> playFocusSoundscape(
+    FocusSoundscape soundscape, {
+    double volume = 0.35,
+  }) async {
+    try {
+      await stopAmbient();
+      _ambientPlayer = AudioPlayer();
+      await _ambientPlayer!.setVolume(volume);
+      final audioData = _generateFocusSoundscapeWav(
+        kind: soundscape.kind,
+        durationSeconds: 12,
+        sampleRate: 44100,
+      );
+      final source = _WavAudioSource(audioData);
+      await _ambientPlayer!.setAudioSource(source);
+      await _ambientPlayer!.setLoopMode(LoopMode.one);
+      await _ambientPlayer!.play();
+    } catch (e) {
+      debugPrint('AudioService.playFocusSoundscape error: $e');
     }
   }
 
@@ -162,6 +192,7 @@ class AudioService {
     required NoiseType type,
     required double durationSeconds,
     required int sampleRate,
+    double gain = 1.0,
   }) {
     final numSamples = (sampleRate * durationSeconds).toInt();
     final samples = Float64List(numSamples);
@@ -171,20 +202,142 @@ class AudioService {
       final white = _random.nextDouble() * 2 - 1;
       switch (type) {
         case NoiseType.white:
-          samples[i] = white * 0.3;
+          samples[i] = white * 0.3 * gain;
           break;
         case NoiseType.brown:
           lastValue = (lastValue + white * 0.02).clamp(-1.0, 1.0);
-          samples[i] = lastValue * 0.8;
+          samples[i] = lastValue * 0.8 * gain;
           break;
         case NoiseType.pink:
           lastValue = lastValue * 0.96 + white * 0.04;
-          samples[i] = lastValue * 3.0;
+          samples[i] = lastValue * 3.0 * gain;
           break;
       }
     }
 
     return _encodeWav(samples, sampleRate);
+  }
+
+  Uint8List _generateFocusSoundscapeWav({
+    required FocusSoundKind kind,
+    required double durationSeconds,
+    required int sampleRate,
+  }) {
+    switch (kind) {
+      case FocusSoundKind.brownNoise:
+        return _generateNoiseWav(
+          type: NoiseType.brown,
+          durationSeconds: durationSeconds,
+          sampleRate: sampleRate,
+          gain: 0.4,
+        );
+      case FocusSoundKind.pinkNoise:
+        return _generateNoiseWav(
+          type: NoiseType.pink,
+          durationSeconds: durationSeconds,
+          sampleRate: sampleRate,
+          gain: 0.18,
+        );
+      case FocusSoundKind.rainDrift:
+        return _encodeWav(
+          _buildRainDriftSamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
+      case FocusSoundKind.oceanWave:
+        return _encodeWav(
+          _buildOceanWaveSamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
+      case FocusSoundKind.cafeHum:
+        return _encodeWav(
+          _buildCafeHumSamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
+    }
+  }
+
+  Float64List _buildRainDriftSamples(double durationSeconds, int sampleRate) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    final random = Random(13);
+    var rainBed = 0.0;
+    var droplet = 0.0;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      rainBed = rainBed * 0.86 + white.abs() * 0.14;
+
+      if (random.nextDouble() > 0.9992) {
+        droplet = 1.0;
+      }
+      droplet *= 0.992;
+
+      final hiss = (rainBed - 0.5) * 0.22;
+      final sparkle =
+          sin(2 * pi * (1800 + 600 * sin(2 * pi * 0.17 * t)) * t) *
+          droplet *
+          0.08;
+      final air = white * 0.015;
+
+      samples[i] = (hiss + sparkle + air).clamp(-1.0, 1.0);
+    }
+
+    return samples;
+  }
+
+  Float64List _buildOceanWaveSamples(double durationSeconds, int sampleRate) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    final random = Random(29);
+    var surf = 0.0;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      surf = surf * 0.995 + white * 0.005;
+
+      final swell = 0.55 + 0.45 * sin(2 * pi * 0.075 * t - pi / 2);
+      final foam = surf * 0.24 * swell;
+      final lowRumble =
+          (sin(2 * pi * 52 * t) + 0.5 * sin(2 * pi * 104 * t)) * 0.02;
+      final air = white * 0.008;
+
+      samples[i] = (foam + lowRumble + air).clamp(-1.0, 1.0);
+    }
+
+    return samples;
+  }
+
+  Float64List _buildCafeHumSamples(double durationSeconds, int sampleRate) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    final random = Random(47);
+    var murmur = 0.0;
+    var clink = 0.0;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      murmur = murmur * 0.985 + white * 0.015;
+
+      if (random.nextDouble() > 0.99965) {
+        clink = 1.0;
+      }
+      clink *= 0.985;
+
+      final hum = sin(2 * pi * 110 * t) * 0.015 + sin(2 * pi * 220 * t) * 0.008;
+      final room = murmur * 0.18;
+      final chatter =
+          sin(2 * pi * (240 + 20 * sin(2 * pi * 0.11 * t)) * t) *
+          murmur.abs() *
+          0.02;
+      final cup = sin(2 * pi * 1450 * t) * clink * 0.05;
+
+      samples[i] = (hum + room + chatter + cup).clamp(-1.0, 1.0);
+    }
+
+    return samples;
   }
 
   /// 将采样数据编码为 16 位 PCM WAV 格式

@@ -27,25 +27,64 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           _buildSectionHeader('提示音', theme),
           _buildSoundSelector(storage, theme),
+          _buildSwitchTile('随机提示音', '每次随机播放不同的提示音', storage.randomSoundMode, (
+            v,
+          ) {
+            storage.setRandomSoundMode(v);
+            setState(() {});
+          }, theme),
+          _buildSliderTile('提示音音量', storage.alertVolume, (v) {
+            storage.setAlertVolume(v);
+            setState(() {});
+          }, theme),
+
+          const Divider(height: 32),
+          _buildSectionHeader('专注背景音', theme),
           _buildSwitchTile(
-            '随机提示音',
-            '每次随机播放不同的提示音',
-            storage.randomSoundMode,
+            '开始专注时播放背景音',
+            '播放循环的专注声音，暂停或休息时会自动停止',
+            storage.focusSoundEnabled,
             (v) {
-              storage.setRandomSoundMode(v);
+              storage.setFocusSoundEnabled(v);
+              if (!v) {
+                ref.read(audioServiceProvider).stopAmbient();
+              }
               setState(() {});
             },
             theme,
           ),
-          _buildSliderTile(
-            '提示音音量',
-            storage.alertVolume,
-            (v) {
-              storage.setAlertVolume(v);
+          if (storage.focusSoundEnabled) ...[
+            _buildFocusSoundSelector(storage, theme),
+            _buildSwitchTile(
+              '随机专注背景音',
+              '每次开始专注时，随机选择一种专注背景音',
+              storage.randomFocusSoundMode,
+              (v) {
+                storage.setRandomFocusSoundMode(v);
+                setState(() {});
+              },
+              theme,
+            ),
+            _buildSliderTile('背景音音量', storage.focusSoundVolume, (v) {
+              storage.setFocusSoundVolume(v);
+              ref.read(audioServiceProvider).setAmbientVolume(v);
               setState(() {});
-            },
-            theme,
-          ),
+            }, theme),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: ListTile(
+                leading: Icon(
+                  Icons.stop_circle_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+                title: const Text('停止试听'),
+                subtitle: const Text('停止当前正在试听的专注背景音'),
+                onTap: () {
+                  ref.read(audioServiceProvider).stopAmbient();
+                },
+              ),
+            ),
+          ],
 
           const Divider(height: 32),
           _buildSectionHeader('时间参数', theme),
@@ -94,26 +133,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
           const Divider(height: 32),
           _buildSectionHeader('其他', theme),
-          _buildSwitchTile(
-            '震动反馈',
-            '铃声响起时震动提醒',
-            storage.vibrationEnabled,
-            (v) {
-              storage.setVibrationEnabled(v);
-              setState(() {});
-            },
-            theme,
-          ),
-          _buildSwitchTile(
-            '科学小贴士',
-            '微休息时显示神经科学小知识',
-            storage.showScienceTips,
-            (v) {
-              storage.setShowScienceTips(v);
-              setState(() {});
-            },
-            theme,
-          ),
+          _buildSwitchTile('震动反馈', '铃声响起时震动提醒', storage.vibrationEnabled, (v) {
+            storage.setVibrationEnabled(v);
+            setState(() {});
+          }, theme),
+          _buildSwitchTile('科学小贴士', '微休息时显示神经科学小知识', storage.showScienceTips, (
+            v,
+          ) {
+            storage.setShowScienceTips(v);
+            setState(() {});
+          }, theme),
         ],
       ),
     );
@@ -139,11 +168,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ExpansionTile(
-        leading: Icon(Icons.music_note_rounded, color: theme.colorScheme.primary),
+        leading: Icon(
+          Icons.music_note_rounded,
+          color: theme.colorScheme.primary,
+        ),
         title: Text(
           builtInSounds
-              .firstWhere((s) => s.id == selectedId,
-                  orElse: () => builtInSounds.first)
+              .firstWhere(
+                (s) => s.id == selectedId,
+                orElse: () => builtInSounds.first,
+              )
               .name,
         ),
         subtitle: const Text('点击展开选择提示音'),
@@ -160,34 +194,90 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             ...builtInSounds
                 .where((s) => s.category == category)
-                .map((sound) => ListTile(
-                      dense: true,
-                      leading: Icon(
-                        sound.id == selectedId
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked,
-                        color: sound.id == selectedId
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurfaceVariant,
-                      ),
-                      onTap: () {
-                        storage.setSelectedSoundId(sound.id);
-                        setState(() {});
+                .map(
+                  (sound) => ListTile(
+                    dense: true,
+                    leading: Icon(
+                      sound.id == selectedId
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: sound.id == selectedId
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    onTap: () {
+                      storage.setSelectedSoundId(sound.id);
+                      setState(() {});
+                    },
+                    title: Text(sound.name),
+                    subtitle: Text(sound.nameEn),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.play_circle_outline_rounded),
+                      onPressed: () {
+                        audio.playBuiltInSound(
+                          sound,
+                          volume: storage.alertVolume,
+                        );
                       },
-                      title: Text(sound.name),
-                      subtitle: Text(sound.nameEn),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.play_circle_outline_rounded),
-                        onPressed: () {
-                          audio.playBuiltInSound(
-                            sound,
-                            volume: storage.alertVolume,
-                          );
-                        },
-                      ),
-                    )),
+                    ),
+                  ),
+                ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildFocusSoundSelector(StorageService storage, ThemeData theme) {
+    final selectedId = storage.selectedFocusSoundId;
+    final audio = ref.read(audioServiceProvider);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ExpansionTile(
+        leading: Icon(
+          Icons.headphones_rounded,
+          color: theme.colorScheme.primary,
+        ),
+        title: Text(
+          focusSoundscapes
+              .firstWhere(
+                (soundscape) => soundscape.id == selectedId,
+                orElse: () => focusSoundscapes.first,
+              )
+              .name,
+        ),
+        subtitle: const Text('点击展开选择专注背景音'),
+        children: focusSoundscapes
+            .map(
+              (soundscape) => ListTile(
+                dense: true,
+                leading: Icon(
+                  soundscape.id == selectedId
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: soundscape.id == selectedId
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                onTap: () {
+                  storage.setSelectedFocusSoundId(soundscape.id);
+                  setState(() {});
+                },
+                title: Text(soundscape.name),
+                subtitle: Text(soundscape.description),
+                trailing: IconButton(
+                  icon: const Icon(Icons.play_circle_outline_rounded),
+                  onPressed: () {
+                    audio.playFocusSoundscape(
+                      soundscape,
+                      volume: storage.focusSoundVolume,
+                    );
+                  },
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }
@@ -292,7 +382,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           min: AppConstants.minIntervalMinutes.toDouble(),
           max: AppConstants.maxIntervalMinutes.toDouble(),
-          divisions: AppConstants.maxIntervalMinutes - AppConstants.minIntervalMinutes,
+          divisions:
+              AppConstants.maxIntervalMinutes - AppConstants.minIntervalMinutes,
           labels: RangeLabels(
             '${storage.minInterval}分钟',
             '${storage.maxInterval}分钟',
@@ -314,7 +405,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
-        leading: Icon(Icons.brightness_6_rounded, color: theme.colorScheme.primary),
+        leading: Icon(
+          Icons.brightness_6_rounded,
+          color: theme.colorScheme.primary,
+        ),
         title: const Text('主题模式'),
         trailing: SegmentedButton<ThemeMode>(
           segments: const [

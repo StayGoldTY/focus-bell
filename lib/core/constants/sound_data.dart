@@ -30,24 +30,129 @@ class BuiltInSound {
 /// 内置提示音列表（使用程序化合成，无需音频文件）
 const List<BuiltInSound> builtInSounds = [
   // 铃声类
-  BuiltInSound(id: 'singing_bowl', name: '藏钵钟声', nameEn: 'Singing Bowl', category: SoundCategory.bell, frequency: 432, durationSeconds: 2.0),
-  BuiltInSound(id: 'wind_chime', name: '风铃', nameEn: 'Wind Chime', category: SoundCategory.bell, frequency: 880, durationSeconds: 1.5),
-  BuiltInSound(id: 'wooden_fish', name: '木鱼', nameEn: 'Wooden Fish', category: SoundCategory.bell, frequency: 300, durationSeconds: 0.8),
-  BuiltInSound(id: 'triangle_ding', name: '三角铁', nameEn: 'Triangle Ding', category: SoundCategory.bell, frequency: 1200, durationSeconds: 1.2),
+  BuiltInSound(
+    id: 'singing_bowl',
+    name: '藏钵钟声',
+    nameEn: 'Singing Bowl',
+    category: SoundCategory.bell,
+    frequency: 432,
+    durationSeconds: 2.0,
+  ),
+  BuiltInSound(
+    id: 'wind_chime',
+    name: '风铃',
+    nameEn: 'Wind Chime',
+    category: SoundCategory.bell,
+    frequency: 880,
+    durationSeconds: 1.5,
+  ),
+  BuiltInSound(
+    id: 'wooden_fish',
+    name: '木鱼',
+    nameEn: 'Wooden Fish',
+    category: SoundCategory.bell,
+    frequency: 300,
+    durationSeconds: 0.8,
+  ),
+  BuiltInSound(
+    id: 'triangle_ding',
+    name: '三角铁',
+    nameEn: 'Triangle Ding',
+    category: SoundCategory.bell,
+    frequency: 1200,
+    durationSeconds: 1.2,
+  ),
   // 自然声类
-  BuiltInSound(id: 'bird_chirp', name: '鸟鸣一声', nameEn: 'Bird Chirp', category: SoundCategory.nature, frequency: 2000, durationSeconds: 1.0),
-  BuiltInSound(id: 'water_drop', name: '水滴声', nameEn: 'Water Drop', category: SoundCategory.nature, frequency: 600, durationSeconds: 0.6),
-  BuiltInSound(id: 'bamboo_wind', name: '竹林风声', nameEn: 'Bamboo Wind', category: SoundCategory.nature, frequency: 400, durationSeconds: 2.0),
-  BuiltInSound(id: 'cricket', name: '蟋蟀声', nameEn: 'Cricket Chirp', category: SoundCategory.nature, frequency: 3500, durationSeconds: 1.0),
+  BuiltInSound(
+    id: 'bird_chirp',
+    name: '鸟鸣一声',
+    nameEn: 'Bird Chirp',
+    category: SoundCategory.nature,
+    frequency: 2000,
+    durationSeconds: 1.0,
+  ),
+  BuiltInSound(
+    id: 'water_drop',
+    name: '水滴声',
+    nameEn: 'Water Drop',
+    category: SoundCategory.nature,
+    frequency: 600,
+    durationSeconds: 0.6,
+  ),
+  BuiltInSound(
+    id: 'bamboo_wind',
+    name: '竹林风声',
+    nameEn: 'Bamboo Wind',
+    category: SoundCategory.nature,
+    frequency: 400,
+    durationSeconds: 2.0,
+  ),
+  BuiltInSound(
+    id: 'cricket',
+    name: '蟋蟀声',
+    nameEn: 'Cricket Chirp',
+    category: SoundCategory.nature,
+    frequency: 3500,
+    durationSeconds: 1.0,
+  ),
   // 电子音类
-  BuiltInSound(id: 'soft_ding', name: '柔和叮咚', nameEn: 'Soft Ding', category: SoundCategory.digital, frequency: 523, durationSeconds: 0.8),
-  BuiltInSound(id: 'bubble_pop', name: '气泡音', nameEn: 'Bubble Pop', category: SoundCategory.digital, frequency: 700, durationSeconds: 0.5),
-  BuiltInSound(id: 'harp_pluck', name: '琴弦拨动', nameEn: 'Harp Pluck', category: SoundCategory.digital, frequency: 660, durationSeconds: 1.0),
-  BuiltInSound(id: 'digital_pulse', name: '数字脉冲', nameEn: 'Digital Pulse', category: SoundCategory.digital, frequency: 440, durationSeconds: 0.6),
+  BuiltInSound(
+    id: 'soft_ding',
+    name: '柔和叮咚',
+    nameEn: 'Soft Ding',
+    category: SoundCategory.digital,
+    frequency: 523,
+    durationSeconds: 0.8,
+  ),
+  BuiltInSound(
+    id: 'bubble_pop',
+    name: '气泡音',
+    nameEn: 'Bubble Pop',
+    category: SoundCategory.digital,
+    frequency: 700,
+    durationSeconds: 0.5,
+  ),
+  BuiltInSound(
+    id: 'harp_pluck',
+    name: '琴弦拨动',
+    nameEn: 'Harp Pluck',
+    category: SoundCategory.digital,
+    frequency: 660,
+    durationSeconds: 1.0,
+  ),
+  BuiltInSound(
+    id: 'digital_pulse',
+    name: '数字脉冲',
+    nameEn: 'Digital Pulse',
+    category: SoundCategory.digital,
+    frequency: 440,
+    durationSeconds: 0.6,
+  ),
   // 人声类
-  BuiltInSound(id: 'gentle_rest', name: '轻声提醒', nameEn: 'Gentle Rest', category: SoundCategory.voice, frequency: 350, durationSeconds: 1.5),
-  BuiltInSound(id: 'breathing_guide', name: '呼吸引导', nameEn: 'Breathing Guide', category: SoundCategory.voice, frequency: 280, durationSeconds: 2.0),
-  BuiltInSound(id: 'bell_voice', name: '铃铛+语音', nameEn: 'Bell + Voice', category: SoundCategory.voice, frequency: 500, durationSeconds: 2.0),
+  BuiltInSound(
+    id: 'gentle_rest',
+    name: '轻声提醒',
+    nameEn: 'Gentle Rest',
+    category: SoundCategory.voice,
+    frequency: 350,
+    durationSeconds: 1.5,
+  ),
+  BuiltInSound(
+    id: 'breathing_guide',
+    name: '呼吸引导',
+    nameEn: 'Breathing Guide',
+    category: SoundCategory.voice,
+    frequency: 280,
+    durationSeconds: 2.0,
+  ),
+  BuiltInSound(
+    id: 'bell_voice',
+    name: '铃铛+语音',
+    nameEn: 'Bell + Voice',
+    category: SoundCategory.voice,
+    frequency: 500,
+    durationSeconds: 2.0,
+  ),
 ];
 
 /// 环境音场景预设
@@ -69,11 +174,72 @@ const List<AmbientScene> ambientScenes = [
   AmbientScene(id: 'forest', name: '森林', icon: '🌲', apiParam: 'forest'),
   AmbientScene(id: 'rain', name: '雨声', icon: '🌧️', apiParam: 'light_rain'),
   AmbientScene(id: 'ocean', name: '海洋', icon: '🌊', apiParam: 'ocean'),
-  AmbientScene(id: 'coffee_shop', name: '咖啡馆', icon: '☕', apiParam: 'coffee_shop'),
+  AmbientScene(
+    id: 'coffee_shop',
+    name: '咖啡馆',
+    icon: '☕',
+    apiParam: 'coffee_shop',
+  ),
   AmbientScene(id: 'river', name: '河流', icon: '🏞️', apiParam: 'river'),
   AmbientScene(id: 'lake', name: '湖泊', icon: '🏔️', apiParam: 'lake'),
   AmbientScene(id: 'beach', name: '沙滩', icon: '🏖️', apiParam: 'beach'),
   AmbientScene(id: 'fireplace', name: '壁炉', icon: '🔥', apiParam: 'fireplace'),
+];
+
+enum FocusSoundKind { brownNoise, pinkNoise, rainDrift, oceanWave, cafeHum }
+
+class FocusSoundscape {
+  final String id;
+  final String name;
+  final String nameEn;
+  final String description;
+  final FocusSoundKind kind;
+
+  const FocusSoundscape({
+    required this.id,
+    required this.name,
+    required this.nameEn,
+    required this.description,
+    required this.kind,
+  });
+}
+
+const List<FocusSoundscape> focusSoundscapes = [
+  FocusSoundscape(
+    id: 'brown_noise',
+    name: '深度棕噪',
+    nameEn: 'Brown Noise',
+    description: '低频稳定，适合长时间沉浸专注',
+    kind: FocusSoundKind.brownNoise,
+  ),
+  FocusSoundscape(
+    id: 'pink_noise',
+    name: '柔和粉噪',
+    nameEn: 'Pink Noise',
+    description: '更柔和的宽频底噪，适合阅读和写作',
+    kind: FocusSoundKind.pinkNoise,
+  ),
+  FocusSoundscape(
+    id: 'rain_drift',
+    name: '细雨幕布',
+    nameEn: 'Rain Drift',
+    description: '轻雨感氛围，帮助屏蔽环境干扰',
+    kind: FocusSoundKind.rainDrift,
+  ),
+  FocusSoundscape(
+    id: 'ocean_wave',
+    name: '海浪呼吸',
+    nameEn: 'Ocean Wave',
+    description: '起伏舒缓，适合需要放松心绪时使用',
+    kind: FocusSoundKind.oceanWave,
+  ),
+  FocusSoundscape(
+    id: 'cafe_hum',
+    name: '咖啡馆嗡鸣',
+    nameEn: 'Cafe Hum',
+    description: '轻微人声与环境底噪，模拟陪伴感',
+    kind: FocusSoundKind.cafeHum,
+  ),
 ];
 
 /// 科学小贴士（微休息时随机展示）
