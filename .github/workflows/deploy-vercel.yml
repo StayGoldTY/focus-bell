@@ -1,0 +1,68 @@
+name: Deploy To Vercel
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Vercel secrets
+        id: vercel-secrets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Vercel secrets are not configured; skipping Vercel deployment."
+          fi
+
+      - name: Setup Node.js
+        if: steps.vercel-secrets.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.11.0'
+
+      - name: Setup Flutter
+        if: steps.vercel-secrets.outputs.ready == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.41.6
+          cache: true
+
+      - name: Install Flutter dependencies
+        if: steps.vercel-secrets.outputs.ready == 'true'
+        run: flutter pub get
+
+      - name: Run tests
+        if: steps.vercel-secrets.outputs.ready == 'true'
+        run: flutter test
+
+      - name: Build web app for Vercel
+        if: steps.vercel-secrets.outputs.ready == 'true'
+        run: flutter build web --release --base-href /
+
+      - name: Prepare Vercel output
+        if: steps.vercel-secrets.outputs.ready == 'true'
+        shell: pwsh
+        run: ./scripts/prepare-vercel-output.ps1
+
+      - name: Deploy to Vercel
+        if: steps.vercel-secrets.outputs.ready == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx vercel deploy --prebuilt --prod --archive=tgz --token "$VERCEL_TOKEN"

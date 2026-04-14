@@ -16,6 +16,60 @@ flutter run
 flutter build web --release --base-href /
 ```
 
+## Vercel 免费域名部署
+
+仓库已经包含 `.github/workflows/deploy-vercel.yml`，可以发布到免费的 `*.vercel.app` 域名。
+
+### 本地一键部署
+
+1. 注册或登录 [Vercel](https://vercel.com/signup)。
+2. 首次登录 CLI：
+
+```bash
+vercel login
+```
+
+3. 首次将当前仓库绑定到一个 Vercel 项目：
+
+```bash
+vercel link --yes
+```
+
+4. 本地直接构建并发布到生产环境：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vercel.ps1
+```
+
+如果只想先发一个预览地址，可以改用：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vercel.ps1 -Preview
+```
+
+### GitHub Actions 自动部署
+
+工作流会先执行 `flutter test`，然后用 `flutter build web --release --base-href /` 构建，再把生成的静态文件打包成 Vercel Build Output 并发布。
+
+首次配置需要 3 个 GitHub Secrets：
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+推荐准备步骤：
+
+1. 在浏览器登录 Vercel，进入 [Account Tokens](https://vercel.com/account/tokens) 创建一个 Token。
+2. 在仓库根目录运行一次：
+
+```bash
+vercel link --yes
+```
+
+3. 打开本地生成的 `.vercel/project.json`，取出 `orgId` 和 `projectId`。
+4. 在 GitHub 仓库 `Settings` > `Secrets and variables` > `Actions` 中新增上面 3 个 Secrets。
+5. 之后每次推送到 `master`，GitHub Actions 就会自动发布到你的 `vercel.app` 域名。
+
 ## EdgeOne Pages 自动部署
 
 仓库已经包含 `.github/workflows/deploy-edgeone.yml`，推送到 `master` 后会自动构建并发布到 EdgeOne Pages。
