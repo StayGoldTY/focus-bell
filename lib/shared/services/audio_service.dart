@@ -243,14 +243,44 @@ class AudioService {
           _buildRainDriftSamples(durationSeconds, sampleRate),
           sampleRate,
         );
+      case FocusSoundKind.forestCanopy:
+        return _encodeWav(
+          _buildForestCanopySamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
+      case FocusSoundKind.streamFlow:
+        return _encodeWav(
+          _buildStreamFlowSamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
       case FocusSoundKind.oceanWave:
         return _encodeWav(
           _buildOceanWaveSamples(durationSeconds, sampleRate),
           sampleRate,
         );
+      case FocusSoundKind.fireplaceGlow:
+        return _encodeWav(
+          _buildFireplaceGlowSamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
+      case FocusSoundKind.nightCrickets:
+        return _encodeWav(
+          _buildNightCricketsSamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
+      case FocusSoundKind.meditationDrone:
+        return _encodeWav(
+          _buildMeditationDroneSamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
       case FocusSoundKind.cafeHum:
         return _encodeWav(
           _buildCafeHumSamples(durationSeconds, sampleRate),
+          sampleRate,
+        );
+      case FocusSoundKind.studyLofi:
+        return _encodeWav(
+          _buildStudyLofiSamples(durationSeconds, sampleRate),
           sampleRate,
         );
     }
@@ -286,6 +316,70 @@ class AudioService {
     return samples;
   }
 
+  Float64List _buildForestCanopySamples(double durationSeconds, int sampleRate) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    final random = Random(61);
+    var breeze = 0.0;
+    var birdEnvelope = 0.0;
+    var birdFrequency = 1700.0;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      breeze = breeze * 0.985 + white * 0.015;
+
+      if (random.nextDouble() > 0.99972) {
+        birdEnvelope = 1.0;
+        birdFrequency = 1500 + random.nextDouble() * 900;
+      }
+      birdEnvelope *= 0.993;
+
+      final canopy =
+          breeze * 0.12 * (0.65 + 0.35 * sin(2 * pi * 0.05 * t));
+      final rustle =
+          white * 0.012 * (0.55 + 0.45 * sin(2 * pi * 0.19 * t + 0.4));
+      final chirp =
+          (sin(2 * pi * birdFrequency * t) +
+                  0.4 * sin(2 * pi * birdFrequency * 1.6 * t)) *
+              birdEnvelope *
+              0.045;
+      final distant = sin(2 * pi * 260 * t + sin(2 * pi * 0.08 * t)) * 0.004;
+
+      samples[i] = (canopy + rustle + chirp + distant).clamp(-1.0, 1.0);
+    }
+
+    return samples;
+  }
+
+  Float64List _buildStreamFlowSamples(double durationSeconds, int sampleRate) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    final random = Random(73);
+    var current = 0.0;
+    var ripple = 0.0;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      current = current * 0.92 + white.abs() * 0.08;
+      ripple = ripple * 0.96 + white * 0.04;
+
+      final bed = (current - 0.48) * 0.22;
+      final shimmer =
+          ripple * 0.08 * (0.7 + 0.3 * sin(2 * pi * 0.33 * t + 0.5));
+      final eddy =
+          sin(2 * pi * (420 + 60 * sin(2 * pi * 0.09 * t)) * t) *
+          max(0.0, sin(2 * pi * 0.7 * t)).toDouble() *
+          0.018;
+      final air = white * 0.01;
+
+      samples[i] = (bed + shimmer + eddy + air).clamp(-1.0, 1.0);
+    }
+
+    return samples;
+  }
+
   Float64List _buildOceanWaveSamples(double durationSeconds, int sampleRate) {
     final numSamples = (sampleRate * durationSeconds).toInt();
     final samples = Float64List(numSamples);
@@ -304,6 +398,116 @@ class AudioService {
       final air = white * 0.008;
 
       samples[i] = (foam + lowRumble + air).clamp(-1.0, 1.0);
+    }
+
+    return samples;
+  }
+
+  Float64List _buildFireplaceGlowSamples(
+    double durationSeconds,
+    int sampleRate,
+  ) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    final random = Random(83);
+    var warmth = 0.0;
+    var ember = 0.0;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      warmth = warmth * 0.99 + white * 0.01;
+
+      if (random.nextDouble() > 0.99945) {
+        ember = 1.0;
+      }
+      ember *= 0.965;
+
+      final fireBed = warmth.abs() * 0.12 * (0.65 + 0.35 * sin(2 * pi * 0.07 * t));
+      final rumble =
+          sin(2 * pi * 58 * t) * 0.025 + sin(2 * pi * 116 * t) * 0.01;
+      final crackle =
+          (white >= 0 ? 1.0 : -1.0) *
+          pow(white.abs(), 3).toDouble() *
+          ember *
+          0.18;
+      final hiss = white * 0.004;
+
+      samples[i] = (fireBed + rumble + crackle + hiss).clamp(-1.0, 1.0);
+    }
+
+    return samples;
+  }
+
+  Float64List _buildNightCricketsSamples(
+    double durationSeconds,
+    int sampleRate,
+  ) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    final random = Random(97);
+    var air = 0.0;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      air = air * 0.99 + white * 0.01;
+
+      final gateA = max(0.0, sin(2 * pi * 1.05 * t)).toDouble();
+      final gateB = max(0.0, sin(2 * pi * 0.92 * t + 0.8)).toDouble();
+      final chirpA =
+          sin(2 * pi * 3900 * t) *
+          pow(max(0.0, sin(2 * pi * 17 * t)).toDouble(), 12).toDouble() *
+          pow(gateA, 2).toDouble() *
+          0.028;
+      final chirpB =
+          sin(2 * pi * 4700 * t) *
+          pow(max(0.0, sin(2 * pi * 13.5 * t + 1.7)).toDouble(), 10)
+              .toDouble() *
+          (0.55 + 0.45 * gateB) *
+          0.02;
+      final nightAir = air * 0.018 + sin(2 * pi * 180 * t) * 0.003;
+
+      samples[i] = (chirpA + chirpB + nightAir).clamp(-1.0, 1.0);
+    }
+
+    return samples;
+  }
+
+  Float64List _buildMeditationDroneSamples(
+    double durationSeconds,
+    int sampleRate,
+  ) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    final random = Random(109);
+    var air = 0.0;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      air = air * 0.996 + white * 0.004;
+
+      final breath = 0.7 + 0.3 * sin(2 * pi * 0.045 * t - pi / 2);
+      final drone =
+          (sin(2 * pi * 110 * t) +
+                  0.6 * sin(2 * pi * 165 * t + 0.3) +
+                  0.35 * sin(2 * pi * 220 * t + 1.2)) *
+              0.035 *
+              breath;
+      final shimmer =
+          sin(2 * pi * 528 * t + 0.25 * sin(2 * pi * 0.12 * t)) *
+          0.01 *
+          (0.4 + 0.6 * breath);
+      final bellPhase = t % 6.0;
+      final bellEnv = exp(-2.8 * bellPhase);
+      final bowl =
+          (sin(2 * pi * 432 * t) + 0.5 * sin(2 * pi * 864 * t)) *
+          bellEnv *
+          0.015;
+      final haze = air * 0.012;
+
+      samples[i] = (drone + shimmer + bowl + haze).clamp(-1.0, 1.0);
     }
 
     return samples;
@@ -335,6 +539,69 @@ class AudioService {
       final cup = sin(2 * pi * 1450 * t) * clink * 0.05;
 
       samples[i] = (hum + room + chatter + cup).clamp(-1.0, 1.0);
+    }
+
+    return samples;
+  }
+
+  Float64List _buildStudyLofiSamples(double durationSeconds, int sampleRate) {
+    final numSamples = (sampleRate * durationSeconds).toInt();
+    final samples = Float64List(numSamples);
+    const melody = <double>[
+      261.63,
+      329.63,
+      392.0,
+      329.63,
+      440.0,
+      392.0,
+      329.63,
+      293.66,
+      261.63,
+      329.63,
+      392.0,
+      523.25,
+      493.88,
+      392.0,
+      329.63,
+      293.66,
+    ];
+    const bassline = <double>[130.81, 146.83, 174.61, 146.83, 130.81, 146.83, 196.0, 174.61];
+    final random = Random(131);
+    var dust = 0.0;
+    const melodyStep = 0.75;
+    const bassStep = 1.5;
+
+    for (var i = 0; i < numSamples; i++) {
+      final t = i / sampleRate;
+      final white = random.nextDouble() * 2 - 1;
+      dust = dust * 0.98 + white * 0.02;
+
+      final melodyIndex = ((t / melodyStep).floor()) % melody.length;
+      final melodyPhase = t - (t / melodyStep).floor() * melodyStep;
+      final melodyEnv = exp(-4.8 * melodyPhase);
+      final note = melody[melodyIndex];
+      final lead =
+          (sin(2 * pi * note * t) * 0.02 +
+                  sin(2 * pi * note * 2 * t) * 0.008 +
+                  sin(2 * pi * note * 3 * t) * 0.003) *
+              melodyEnv;
+
+      final bassIndex = ((t / bassStep).floor()) % bassline.length;
+      final bassPhase = t - (t / bassStep).floor() * bassStep;
+      final bassEnv = exp(-2.8 * bassPhase);
+      final bass =
+          (sin(2 * pi * bassline[bassIndex] * t) +
+                  0.4 * sin(2 * pi * bassline[bassIndex] * 2 * t)) *
+              0.018 *
+              bassEnv;
+
+      final pad =
+          (sin(2 * pi * 196 * t + 0.2 * sin(2 * pi * 0.08 * t)) +
+                  0.6 * sin(2 * pi * 246.94 * t + 1.0)) *
+              0.01;
+      final vinyl = dust * 0.01;
+
+      samples[i] = (lead + bass + pad + vinyl).clamp(-1.0, 1.0);
     }
 
     return samples;

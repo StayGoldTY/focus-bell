@@ -186,13 +186,37 @@ const List<AmbientScene> ambientScenes = [
   AmbientScene(id: 'fireplace', name: '壁炉', icon: '🔥', apiParam: 'fireplace'),
 ];
 
-enum FocusSoundKind { brownNoise, pinkNoise, rainDrift, oceanWave, cafeHum }
+enum FocusSoundCategory {
+  noise('遮罩底噪', '稳定底噪，适合屏蔽杂音与人声'),
+  nature('自然环境', '下雨、森林、溪流、海浪、火焰等经典声音'),
+  meditation('冥想舒缓', '更平稳、更慢节奏的呼吸感音景'),
+  study('学习陪伴', '适合阅读、写作和长时间学习的背景声');
+
+  final String label;
+  final String description;
+  const FocusSoundCategory(this.label, this.description);
+}
+
+enum FocusSoundKind {
+  brownNoise,
+  pinkNoise,
+  rainDrift,
+  forestCanopy,
+  streamFlow,
+  oceanWave,
+  fireplaceGlow,
+  nightCrickets,
+  meditationDrone,
+  cafeHum,
+  studyLofi,
+}
 
 class FocusSoundscape {
   final String id;
   final String name;
   final String nameEn;
   final String description;
+  final FocusSoundCategory category;
   final FocusSoundKind kind;
 
   const FocusSoundscape({
@@ -200,6 +224,7 @@ class FocusSoundscape {
     required this.name,
     required this.nameEn,
     required this.description,
+    required this.category,
     required this.kind,
   });
 }
@@ -210,6 +235,7 @@ const List<FocusSoundscape> focusSoundscapes = [
     name: '深度棕噪',
     nameEn: 'Brown Noise',
     description: '低频稳定，适合长时间沉浸专注',
+    category: FocusSoundCategory.noise,
     kind: FocusSoundKind.brownNoise,
   ),
   FocusSoundscape(
@@ -217,6 +243,7 @@ const List<FocusSoundscape> focusSoundscapes = [
     name: '柔和粉噪',
     nameEn: 'Pink Noise',
     description: '更柔和的宽频底噪，适合阅读和写作',
+    category: FocusSoundCategory.noise,
     kind: FocusSoundKind.pinkNoise,
   ),
   FocusSoundscape(
@@ -224,21 +251,72 @@ const List<FocusSoundscape> focusSoundscapes = [
     name: '细雨幕布',
     nameEn: 'Rain Drift',
     description: '轻雨感氛围，帮助屏蔽环境干扰',
+    category: FocusSoundCategory.nature,
     kind: FocusSoundKind.rainDrift,
+  ),
+  FocusSoundscape(
+    id: 'forest_canopy',
+    name: '林间晨风',
+    nameEn: 'Forest Canopy',
+    description: '轻风与偶发鸟鸣，更贴近自然学习场景',
+    category: FocusSoundCategory.nature,
+    kind: FocusSoundKind.forestCanopy,
+  ),
+  FocusSoundscape(
+    id: 'stream_flow',
+    name: '山涧溪流',
+    nameEn: 'Stream Flow',
+    description: '平稳水流感，适合阅读和深度思考',
+    category: FocusSoundCategory.nature,
+    kind: FocusSoundKind.streamFlow,
   ),
   FocusSoundscape(
     id: 'ocean_wave',
     name: '海浪呼吸',
     nameEn: 'Ocean Wave',
     description: '起伏舒缓，适合需要放松心绪时使用',
+    category: FocusSoundCategory.nature,
     kind: FocusSoundKind.oceanWave,
+  ),
+  FocusSoundscape(
+    id: 'fireplace_glow',
+    name: '壁炉柴火',
+    nameEn: 'Fireplace Glow',
+    description: '噼啪火焰与温暖低频，适合夜间学习',
+    category: FocusSoundCategory.nature,
+    kind: FocusSoundKind.fireplaceGlow,
+  ),
+  FocusSoundscape(
+    id: 'night_crickets',
+    name: '夜晚虫鸣',
+    nameEn: 'Night Crickets',
+    description: '安静夜色中的细小虫鸣，适合独处专注',
+    category: FocusSoundCategory.nature,
+    kind: FocusSoundKind.nightCrickets,
+  ),
+  FocusSoundscape(
+    id: 'meditation_drone',
+    name: '冥想音垫',
+    nameEn: 'Meditation Drone',
+    description: '缓慢起伏的呼吸式音垫，更适合冥想和静心',
+    category: FocusSoundCategory.meditation,
+    kind: FocusSoundKind.meditationDrone,
   ),
   FocusSoundscape(
     id: 'cafe_hum',
     name: '咖啡馆嗡鸣',
     nameEn: 'Cafe Hum',
     description: '轻微人声与环境底噪，模拟陪伴感',
+    category: FocusSoundCategory.study,
     kind: FocusSoundKind.cafeHum,
+  ),
+  FocusSoundscape(
+    id: 'study_lofi',
+    name: '学习轻旋律',
+    nameEn: 'Study Lo-Fi',
+    description: '低刺激的循环旋律，适合阅读、写题和轻写作',
+    category: FocusSoundCategory.study,
+    kind: FocusSoundKind.studyLofi,
   ),
 ];
 

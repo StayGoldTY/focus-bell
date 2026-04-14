@@ -248,36 +248,49 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               .name,
         ),
         subtitle: const Text('点击展开选择专注背景音'),
-        children: focusSoundscapes
-            .map(
-              (soundscape) => ListTile(
-                dense: true,
-                leading: Icon(
-                  soundscape.id == selectedId
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  color: soundscape.id == selectedId
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-                onTap: () {
-                  storage.setSelectedFocusSoundId(soundscape.id);
-                  setState(() {});
-                },
-                title: Text(soundscape.name),
-                subtitle: Text(soundscape.description),
-                trailing: IconButton(
-                  icon: const Icon(Icons.play_circle_outline_rounded),
-                  onPressed: () {
-                    audio.playFocusSoundscape(
-                      soundscape,
-                      volume: storage.focusSoundVolume,
-                    );
-                  },
+        children: [
+          for (final category in FocusSoundCategory.values) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Text(
+                '${category.label} · ${category.description}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            )
-            .toList(),
+            ),
+            ...focusSoundscapes
+                .where((soundscape) => soundscape.category == category)
+                .map(
+                  (soundscape) => ListTile(
+                    dense: true,
+                    leading: Icon(
+                      soundscape.id == selectedId
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: soundscape.id == selectedId
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    onTap: () {
+                      storage.setSelectedFocusSoundId(soundscape.id);
+                      setState(() {});
+                    },
+                    title: Text(soundscape.name),
+                    subtitle: Text(soundscape.description),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.play_circle_outline_rounded),
+                      onPressed: () {
+                        audio.playFocusSoundscape(
+                          soundscape,
+                          volume: storage.focusSoundVolume,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+          ],
+        ],
       ),
     );
   }
