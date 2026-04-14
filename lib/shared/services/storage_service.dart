@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/constants/sound_data.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   throw UnimplementedError('Must be overridden in main');
@@ -66,6 +67,26 @@ class StorageService {
   Future<void> setRandomFocusSoundMode(bool v) =>
       _prefs.setBool('randomFocusSoundMode', v);
 
+  // 当前选择的专注预设
+  String get selectedFocusPresetId =>
+      _prefs.getString('selectedFocusPresetId') ?? defaultFocusPresetId;
+  Future<void> setSelectedFocusPresetId(String v) =>
+      _prefs.setString('selectedFocusPresetId', v);
+  Future<void> markFocusPresetCustom() =>
+      _prefs.setString('selectedFocusPresetId', customFocusPresetId);
+
+  Future<void> applyFocusPreset(FocusPreset preset) async {
+    await setFocusDuration(preset.focusDurationMinutes);
+    await setBreakDuration(preset.breakDurationMinutes);
+    await setMicroRestSeconds(preset.microRestSeconds);
+    await setMinInterval(preset.minIntervalMinutes);
+    await setMaxInterval(preset.maxIntervalMinutes);
+    await setFocusSoundEnabled(preset.focusSoundEnabled);
+    await setRandomFocusSoundMode(preset.randomFocusSoundMode);
+    await setSelectedFocusSoundId(preset.selectedFocusSoundId);
+    await setSelectedFocusPresetId(preset.id);
+  }
+
   // 震动开关
   bool get vibrationEnabled => _prefs.getBool('vibrationEnabled') ?? true;
   Future<void> setVibrationEnabled(bool v) =>
@@ -118,4 +139,14 @@ class StorageService {
   // 今日日期标记
   String get todayDate => _prefs.getString('todayDate') ?? '';
   Future<void> setTodayDate(String v) => _prefs.setString('todayDate', v);
+
+  // 连续专注天数
+  int get currentStreak => _prefs.getInt('currentStreak') ?? 0;
+  Future<void> setCurrentStreak(int v) => _prefs.setInt('currentStreak', v);
+
+  int get bestStreak => _prefs.getInt('bestStreak') ?? 0;
+  Future<void> setBestStreak(int v) => _prefs.setInt('bestStreak', v);
+
+  String get lastFocusDate => _prefs.getString('lastFocusDate') ?? '';
+  Future<void> setLastFocusDate(String v) => _prefs.setString('lastFocusDate', v);
 }

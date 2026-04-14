@@ -39,12 +39,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           }, theme),
 
           const Divider(height: 32),
+          _buildSectionHeader('专注预设', theme),
+          _buildFocusPresetSelector(storage, theme),
+
+          const Divider(height: 32),
           _buildSectionHeader('专注背景音', theme),
           _buildSwitchTile(
             '开始专注时播放背景音',
             '播放循环的专注声音，暂停或休息时会自动停止',
             storage.focusSoundEnabled,
             (v) {
+              _markPresetCustom(storage);
               storage.setFocusSoundEnabled(v);
               if (!v) {
                 ref.read(audioServiceProvider).stopAmbient();
@@ -60,6 +65,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               '每次开始专注时，随机选择一种专注背景音',
               storage.randomFocusSoundMode,
               (v) {
+                _markPresetCustom(storage);
                 storage.setRandomFocusSoundMode(v);
                 setState(() {});
               },
@@ -95,6 +101,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             AppConstants.minFocusDuration.toDouble(),
             AppConstants.maxFocusDuration.toDouble(),
             (v) {
+              _markPresetCustom(storage);
               storage.setFocusDuration(v.round());
               setState(() {});
             },
@@ -107,6 +114,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             AppConstants.minBreakDuration.toDouble(),
             AppConstants.maxBreakDuration.toDouble(),
             (v) {
+              _markPresetCustom(storage);
               storage.setBreakDuration(v.round());
               setState(() {});
             },
@@ -119,6 +127,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             AppConstants.minMicroRestSeconds.toDouble(),
             AppConstants.maxMicroRestSeconds.toDouble(),
             (v) {
+              _markPresetCustom(storage);
               storage.setMicroRestSeconds(v.round());
               setState(() {});
             },
@@ -272,10 +281,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           ? theme.colorScheme.primary
                           : theme.colorScheme.onSurfaceVariant,
                     ),
-                    onTap: () {
-                      storage.setSelectedFocusSoundId(soundscape.id);
-                      setState(() {});
-                    },
+                onTap: () {
+                  _markPresetCustom(storage);
+                  storage.setSelectedFocusSoundId(soundscape.id);
+                  setState(() {});
+                },
                     title: Text(soundscape.name),
                     subtitle: Text(soundscape.description),
                     trailing: IconButton(
@@ -290,6 +300,58 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                 ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFocusPresetSelector(StorageService storage, ThemeData theme) {
+    final selectedPresetId = storage.selectedFocusPresetId;
+    final selectedPreset = findFocusPresetById(selectedPresetId);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(
+              Icons.auto_awesome_rounded,
+              color: theme.colorScheme.primary,
+            ),
+            title: Text(selectedPreset?.name ?? '自定义方案'),
+            subtitle: Text(
+              selectedPreset?.description ??
+                  '你已经在时长、铃声或背景音上做了个性化调整',
+            ),
+          ),
+          const Divider(height: 1),
+          ...focusPresets.map((preset) {
+            final isSelected = preset.id == selectedPresetId;
+            return ListTile(
+              leading: Text(
+                preset.emoji,
+                style: const TextStyle(fontSize: 20),
+              ),
+              title: Text(preset.name),
+              subtitle: Text(
+                '${preset.description}\n'
+                '${preset.focusDurationMinutes}/${preset.breakDurationMinutes} 分钟 · '
+                '微休息 ${preset.microRestSeconds} 秒',
+              ),
+              isThreeLine: true,
+              trailing: isSelected
+                  ? Icon(
+                      Icons.check_circle_rounded,
+                      color: theme.colorScheme.primary,
+                    )
+                  : const Icon(Icons.chevron_right_rounded),
+              onTap: () async {
+                await storage.applyFocusPreset(preset);
+                ref.read(audioServiceProvider).stopAmbient();
+                setState(() {});
+              },
+            );
+          }),
         ],
       ),
     );
@@ -402,6 +464,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             '${storage.maxInterval}分钟',
           ),
           onChanged: (values) {
+            _markPresetCustom(storage);
             storage.setMinInterval(values.start.round());
             storage.setMaxInterval(values.end.round());
             setState(() {});
@@ -478,5 +541,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
       ),
     );
+  }
+
+  void _markPresetCustom(StorageService storage) {
+    if (storage.selectedFocusPresetId != customFocusPresetId) {
+      storage.markFocusPresetCustom();
+    }
   }
 }

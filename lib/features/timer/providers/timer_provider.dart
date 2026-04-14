@@ -93,6 +93,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       totalSeconds: totalSec,
       nextBellInSeconds: _nextBellAt!.difference(DateTime.now()).inSeconds,
       microRestCount: 0,
+      activeFocusSoundId: () => _activeFocusSoundId,
     );
 
     _startTicker();
@@ -133,12 +134,13 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     _ticker?.cancel();
     _audio.stopAll();
     _audio.releaseWakeLock();
-    _activeFocusSoundId = null;
 
     if (state.phase == TimerPhase.focusing ||
         state.pausedFromPhase == TimerPhase.focusing) {
+      _captureCurrentFocusProgressBeforeExit();
       _saveFocusTime();
     }
+    _activeFocusSoundId = null;
     state = FocusTimerState(todayFocusSeconds: _storage.todayFocusSeconds);
   }
 
@@ -244,6 +246,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       elapsedSeconds: 0,
       totalSeconds: microSec,
       microRestCount: state.microRestCount + 1,
+      activeFocusSoundId: () => _activeFocusSoundId,
     );
   }
 
@@ -259,6 +262,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       elapsedSeconds: _focusingAccumulated,
       totalSeconds: focusTotalSec,
       nextBellInSeconds: _nextBellAt!.difference(DateTime.now()).inSeconds,
+      activeFocusSoundId: () => _activeFocusSoundId,
     );
   }
 
@@ -275,6 +279,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       elapsedSeconds: 0,
       totalSeconds: breakSec,
       todayFocusSeconds: state.todayFocusSeconds,
+      activeFocusSoundId: () => null,
     );
     _startTicker();
   }
@@ -338,10 +343,51 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     unawaited(_audio.stopAmbient());
   }
 
+  void _captureCurrentFocusProgressBeforeExit() {
+    if (state.phase == TimerPhase.focusing) {
+      _focusingAccumulated += _currentPhaseElapsed;
+    }
+  }
+
   void _saveFocusTime() {
+    if (_focusingAccumulated <= 0) return;
+
     _storage.setTotalFocusSeconds(
       _storage.totalFocusSeconds + _focusingAccumulated,
     );
+    _updateFocusStreak();
+  }
+
+  void _updateFocusStreak() {
+    final today = DateTime.now();
+    final todayKey = today.toIso8601String().substring(0, 10);
+    final lastKey = _storage.lastFocusDate;
+
+    if (lastKey == todayKey) {
+      return;
+    }
+
+    var currentStreak = _storage.currentStreak;
+
+    if (lastKey.isNotEmpty) {
+      final lastDate = DateTime.tryParse(lastKey);
+      if (lastDate != null) {
+        final diffDays = today
+            .difference(DateTime(lastDate.year, lastDate.month, lastDate.day))
+            .inDays;
+        currentStreak = diffDays == 1 ? currentStreak + 1 : 1;
+      } else {
+        currentStreak = 1;
+      }
+    } else {
+      currentStreak = 1;
+    }
+
+    _storage.setCurrentStreak(currentStreak);
+    if (currentStreak > _storage.bestStreak) {
+      _storage.setBestStreak(currentStreak);
+    }
+    _storage.setLastFocusDate(todayKey);
   }
 
   @override

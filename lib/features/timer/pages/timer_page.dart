@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/sound_data.dart';
+import '../../../shared/services/storage_service.dart';
 import '../models/timer_state.dart';
 import '../providers/timer_provider.dart';
 import '../widgets/circular_timer.dart';
@@ -13,6 +15,7 @@ class TimerPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final timerState = ref.watch(timerProvider);
     final theme = Theme.of(context);
+    final storage = ref.read(storageServiceProvider);
 
     return Scaffold(
       body: LayoutBuilder(
@@ -56,6 +59,10 @@ class TimerPage extends ConsumerWidget {
 
                     // 状态信息
                     _buildStatusInfo(timerState, theme),
+
+                    const SizedBox(height: 16),
+
+                    _buildSessionOverview(timerState, storage, theme),
 
                     const Spacer(),
 
@@ -131,6 +138,108 @@ class TimerPage extends ConsumerWidget {
     }
 
     return const SizedBox.shrink();
+  }
+
+  Widget _buildSessionOverview(
+    FocusTimerState timerState,
+    StorageService storage,
+    ThemeData theme,
+  ) {
+    final preset = findFocusPresetById(storage.selectedFocusPresetId);
+    final activeSound = timerState.activeFocusSoundId != null
+        ? findFocusSoundscapeById(timerState.activeFocusSoundId!)
+        : null;
+    final configuredSound = findFocusSoundscapeById(storage.selectedFocusSoundId);
+
+    final presetLabel = preset?.name ?? '自定义方案';
+    final soundLabel = !storage.focusSoundEnabled
+        ? '关闭'
+        : activeSound?.name ??
+            (storage.randomFocusSoundMode
+                ? '随机专注背景音'
+                : (configuredSound?.name ?? '已开启'));
+
+    final summaryItems = [
+      _OverviewChip(
+        label: '预设',
+        value: presetLabel,
+        icon: Icons.auto_awesome_rounded,
+      ),
+      _OverviewChip(
+        label: '专注/休息',
+        value: '${storage.focusDuration}/${storage.breakDuration} 分钟',
+        icon: Icons.timelapse_rounded,
+      ),
+      _OverviewChip(
+        label: '微休息',
+        value: '${storage.microRestSeconds} 秒',
+        icon: Icons.self_improvement_rounded,
+      ),
+      _OverviewChip(
+        label: '铃声间隔',
+        value: '${storage.minInterval}-${storage.maxInterval} 分钟',
+        icon: Icons.notifications_active_rounded,
+      ),
+      _OverviewChip(
+        label: '背景音',
+        value: soundLabel,
+        icon: Icons.headphones_rounded,
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                timerState.phase == TimerPhase.idle
+                    ? Icons.tune_rounded
+                    : Icons.play_circle_outline_rounded,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                timerState.phase == TimerPhase.idle ? '开始前概览' : '本轮专注设置',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: summaryItems.map((item) {
+              return _buildOverviewChip(item, theme);
+            }).toList(),
+          ),
+          if (preset != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${preset.emoji} ${preset.description}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildControls(
@@ -243,9 +352,45 @@ class TimerPage extends ConsumerWidget {
     );
   }
 
+  Widget _buildOverviewChip(_OverviewChip item, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(item.icon, size: 14, color: theme.colorScheme.primary),
+          const SizedBox(width: 6),
+          Text(
+            '${item.label} · ${item.value}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatSeconds(int seconds) {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
+}
+
+class _OverviewChip {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _OverviewChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 }

@@ -320,6 +320,126 @@ const List<FocusSoundscape> focusSoundscapes = [
   ),
 ];
 
+const String defaultFocusPresetId = 'classic_brac';
+const String customFocusPresetId = 'custom';
+
+class FocusPreset {
+  final String id;
+  final String name;
+  final String emoji;
+  final String description;
+  final int focusDurationMinutes;
+  final int breakDurationMinutes;
+  final int microRestSeconds;
+  final int minIntervalMinutes;
+  final int maxIntervalMinutes;
+  final bool focusSoundEnabled;
+  final bool randomFocusSoundMode;
+  final String selectedFocusSoundId;
+
+  const FocusPreset({
+    required this.id,
+    required this.name,
+    required this.emoji,
+    required this.description,
+    required this.focusDurationMinutes,
+    required this.breakDurationMinutes,
+    required this.microRestSeconds,
+    required this.minIntervalMinutes,
+    required this.maxIntervalMinutes,
+    required this.focusSoundEnabled,
+    required this.randomFocusSoundMode,
+    required this.selectedFocusSoundId,
+  });
+}
+
+const List<FocusPreset> focusPresets = [
+  FocusPreset(
+    id: defaultFocusPresetId,
+    name: '经典 90/20',
+    emoji: '🧠',
+    description: '默认神经节律方案，适合深度工作与长期坚持',
+    focusDurationMinutes: 90,
+    breakDurationMinutes: 20,
+    microRestSeconds: 10,
+    minIntervalMinutes: 3,
+    maxIntervalMinutes: 5,
+    focusSoundEnabled: false,
+    randomFocusSoundMode: false,
+    selectedFocusSoundId: 'brown_noise',
+  ),
+  FocusPreset(
+    id: 'deep_immersion',
+    name: '沉浸深潜',
+    emoji: '🌊',
+    description: '适合写代码、写方案、做长时间高强度专注',
+    focusDurationMinutes: 60,
+    breakDurationMinutes: 15,
+    microRestSeconds: 10,
+    minIntervalMinutes: 4,
+    maxIntervalMinutes: 6,
+    focusSoundEnabled: true,
+    randomFocusSoundMode: false,
+    selectedFocusSoundId: 'brown_noise',
+  ),
+  FocusPreset(
+    id: 'gentle_study',
+    name: '轻柔学习',
+    emoji: '🌧️',
+    description: '适合阅读、背诵、刷题和长时间安静学习',
+    focusDurationMinutes: 45,
+    breakDurationMinutes: 10,
+    microRestSeconds: 8,
+    minIntervalMinutes: 4,
+    maxIntervalMinutes: 6,
+    focusSoundEnabled: true,
+    randomFocusSoundMode: false,
+    selectedFocusSoundId: 'rain_drift',
+  ),
+  FocusPreset(
+    id: 'mindful_reset',
+    name: '冥想回稳',
+    emoji: '🪷',
+    description: '适合情绪整理、冥想练习与低压恢复型专注',
+    focusDurationMinutes: 25,
+    breakDurationMinutes: 5,
+    microRestSeconds: 10,
+    minIntervalMinutes: 3,
+    maxIntervalMinutes: 4,
+    focusSoundEnabled: true,
+    randomFocusSoundMode: false,
+    selectedFocusSoundId: 'meditation_drone',
+  ),
+  FocusPreset(
+    id: 'exam_sprint',
+    name: '刷题冲刺',
+    emoji: '🔥',
+    description: '适合短周期高效率输出，节奏更紧凑',
+    focusDurationMinutes: 30,
+    breakDurationMinutes: 5,
+    microRestSeconds: 6,
+    minIntervalMinutes: 2,
+    maxIntervalMinutes: 3,
+    focusSoundEnabled: true,
+    randomFocusSoundMode: false,
+    selectedFocusSoundId: 'study_lofi',
+  ),
+];
+
+FocusPreset? findFocusPresetById(String id) {
+  for (final preset in focusPresets) {
+    if (preset.id == id) return preset;
+  }
+  return null;
+}
+
+FocusSoundscape? findFocusSoundscapeById(String id) {
+  for (final soundscape in focusSoundscapes) {
+    if (soundscape.id == id) return soundscape;
+  }
+  return null;
+}
+
 /// 科学小贴士（微休息时随机展示）
 const List<String> scienceTips = [
   '你的大脑正在以 20 倍速复习刚才的内容 —— NIH 2021',

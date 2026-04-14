@@ -16,6 +16,12 @@ class StatisticsPage extends ConsumerWidget {
     final sessions = storage.completedSessions;
     final todaySeconds = storage.todayFocusSeconds;
     final todayMinutes = todaySeconds ~/ 60;
+    final currentStreak = storage.currentStreak;
+    final bestStreak = storage.bestStreak;
+    final dailyTargetMinutes = storage.focusDuration;
+    final dailyProgress = dailyTargetMinutes > 0
+        ? (todayMinutes / dailyTargetMinutes).clamp(0.0, 1.0)
+        : 0.0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('专注统计')),
@@ -83,6 +89,80 @@ class StatisticsPage extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.local_fire_department_rounded,
+                    label: '当前连续',
+                    value: '$currentStreak天',
+                    color: const Color(0xFFD84315),
+                    theme: theme,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.workspace_premium_rounded,
+                    label: '最佳连续',
+                    value: '$bestStreak天',
+                    color: const Color(0xFF00897B),
+                    theme: theme,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '今日完成度',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        '${(dailyProgress * 100).round()}%',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '以当前专注时长 $dailyTargetMinutes 分钟为一个完整目标',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: dailyProgress,
+                      minHeight: 8,
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 40),

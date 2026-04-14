@@ -24,6 +24,9 @@ class FocusTimerState {
   /// 今日已专注总秒数
   final int todayFocusSeconds;
 
+  /// 本轮实际激活的专注背景音 ID
+  final String? activeFocusSoundId;
+
   /// 暂停前的阶段
   final TimerPhase? pausedFromPhase;
 
@@ -34,6 +37,7 @@ class FocusTimerState {
     this.nextBellInSeconds = 0,
     this.microRestCount = 0,
     this.todayFocusSeconds = 0,
+    this.activeFocusSoundId,
     this.pausedFromPhase,
   });
 
@@ -71,6 +75,7 @@ class FocusTimerState {
     int? nextBellInSeconds,
     int? microRestCount,
     int? todayFocusSeconds,
+    String? Function()? activeFocusSoundId,
     TimerPhase? Function()? pausedFromPhase,
   }) {
     return FocusTimerState(
@@ -80,6 +85,9 @@ class FocusTimerState {
       nextBellInSeconds: nextBellInSeconds ?? this.nextBellInSeconds,
       microRestCount: microRestCount ?? this.microRestCount,
       todayFocusSeconds: todayFocusSeconds ?? this.todayFocusSeconds,
+      activeFocusSoundId: activeFocusSoundId != null
+          ? activeFocusSoundId()
+          : this.activeFocusSoundId,
       pausedFromPhase: pausedFromPhase != null ? pausedFromPhase() : this.pausedFromPhase,
     );
   }
