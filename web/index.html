@@ -53,30 +53,73 @@
       }, { once: true });
     });
 
-    function playFocusBellTone(frequency, duration, volume) {
+    function playFocusBellPattern(frequency, duration, volume, texture, pulseCount) {
       try {
         var ctx = _ensureAudioCtx();
         var now = ctx.currentTime;
         var safeVol = Math.max(volume, 0.001);
+        var safeTexture = texture || 'digital';
+        var safePulseCount = Math.max(1, pulseCount || 1);
 
-        function makeOsc(freq, vol) {
+        function makeOsc(freq, vol, type, startAt, length) {
           var osc = ctx.createOscillator();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, now);
+          osc.type = type || 'sine';
+          osc.frequency.setValueAtTime(freq, startAt);
           var g = ctx.createGain();
-          g.gain.setValueAtTime(Math.max(vol, 0.001), now);
-          g.gain.exponentialRampToValueAtTime(0.001, now + duration);
+          g.gain.setValueAtTime(Math.max(vol, 0.001), startAt);
+          g.gain.exponentialRampToValueAtTime(0.001, startAt + length);
           osc.connect(g);
           g.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + duration + 0.05);
+          osc.start(startAt);
+          osc.stop(startAt + length + 0.05);
         }
 
-        makeOsc(frequency, safeVol);
-        makeOsc(frequency * 2, safeVol * 0.4);
-        makeOsc(frequency * 3, safeVol * 0.15);
+        var pulseGap = Math.max(0.14, duration / (safePulseCount + 1.8));
+        for (var index = 0; index < safePulseCount; index++) {
+          var startAt = now + index * pulseGap;
+          var gainScale = Math.max(0.55, 1 - index * 0.12);
+          switch (safeTexture) {
+            case 'bowl':
+              makeOsc(frequency, safeVol * 0.9 * gainScale, 'sine', startAt, duration * 0.95);
+              makeOsc(frequency * 2.02, safeVol * 0.32 * gainScale, 'triangle', startAt, duration * 0.9);
+              break;
+            case 'chime':
+              makeOsc(frequency, safeVol * 0.75 * gainScale, 'triangle', startAt, duration * 0.8);
+              makeOsc(frequency * 3, safeVol * 0.18 * gainScale, 'sine', startAt, duration * 0.7);
+              break;
+            case 'wood':
+              makeOsc(frequency * 0.78, safeVol * 0.8 * gainScale, 'triangle', startAt, duration * 0.45);
+              makeOsc(2100, safeVol * 0.05 * gainScale, 'square', startAt, duration * 0.12);
+              break;
+            case 'water':
+              makeOsc(frequency, safeVol * 0.72 * gainScale, 'sine', startAt, duration * 0.55);
+              makeOsc(frequency * 2.2, safeVol * 0.12 * gainScale, 'sine', startAt, duration * 0.45);
+              break;
+            case 'pulse':
+              makeOsc(frequency, safeVol * 0.72 * gainScale, 'square', startAt, duration * 0.32);
+              makeOsc(frequency * 2, safeVol * 0.16 * gainScale, 'sine', startAt, duration * 0.28);
+              break;
+            case 'breath':
+              makeOsc(frequency, safeVol * 0.55 * gainScale, 'sine', startAt, duration * 0.95);
+              makeOsc(frequency * 0.5, safeVol * 0.12 * gainScale, 'triangle', startAt, duration * 0.75);
+              break;
+            case 'crystal':
+              makeOsc(frequency, safeVol * 0.62 * gainScale, 'sine', startAt, duration * 0.85);
+              makeOsc(frequency * 2.7, safeVol * 0.18 * gainScale, 'triangle', startAt, duration * 0.7);
+              makeOsc(frequency * 5.1, safeVol * 0.08 * gainScale, 'sine', startAt, duration * 0.6);
+              break;
+            case 'harp':
+              makeOsc(frequency, safeVol * 0.72 * gainScale, 'triangle', startAt, duration * 0.65);
+              makeOsc(frequency * 2, safeVol * 0.16 * gainScale, 'sine', startAt, duration * 0.4);
+              break;
+            default:
+              makeOsc(frequency, safeVol * gainScale, 'sine', startAt, duration * 0.5);
+              makeOsc(frequency * 2, safeVol * 0.25 * gainScale, 'triangle', startAt, duration * 0.4);
+              break;
+          }
+        }
       } catch (e) {
-        console.warn('playFocusBellTone error:', e);
+        console.warn('playFocusBellPattern error:', e);
       }
     }
 

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/sound_data.dart';
 import '../../core/models/focus_backup_payload.dart';
+import '../../core/models/focus_external_sound.dart';
 import '../../core/models/focus_session_record.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
@@ -25,6 +26,11 @@ class StorageService {
   static const _focusSoundEnabledKey = 'focusSoundEnabled';
   static const _selectedFocusSoundIdKey = 'selectedFocusSoundId';
   static const _randomFocusSoundModeKey = 'randomFocusSoundMode';
+  static const _focusSoundSourceTypeKey = 'focusSoundSourceType';
+  static const _selectedExternalFocusSoundJsonKey =
+      'selectedExternalFocusSoundJson';
+  static const _freesoundApiKeyKey = 'freesoundApiKey';
+  static const _soundscapeApiKeyKey = 'soundscapeApiKey';
   static const _selectedFocusPresetIdKey = 'selectedFocusPresetId';
   static const _vibrationEnabledKey = 'vibrationEnabled';
   static const _showScienceTipsKey = 'showScienceTips';
@@ -100,6 +106,45 @@ class StorageService {
   Future<void> setRandomFocusSoundMode(bool value) =>
       _prefs.setBool(_randomFocusSoundModeKey, value);
 
+  FocusSoundSourceType get focusSoundSourceType =>
+      parseFocusSoundSourceType(_prefs.getString(_focusSoundSourceTypeKey));
+  Future<void> setFocusSoundSourceType(FocusSoundSourceType value) =>
+      _prefs.setString(_focusSoundSourceTypeKey, value.name);
+
+  FocusExternalSound? get selectedExternalFocusSound {
+    final raw = _prefs.getString(_selectedExternalFocusSoundJsonKey);
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+
+    try {
+      return FocusExternalSound.fromJson(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> setSelectedExternalFocusSound(FocusExternalSound value) async {
+    await setFocusSoundSourceType(value.sourceType);
+    await _prefs.setString(
+      _selectedExternalFocusSoundJsonKey,
+      jsonEncode(value.toJson()),
+    );
+  }
+
+  Future<void> clearSelectedExternalFocusSound() =>
+      _prefs.remove(_selectedExternalFocusSoundJsonKey);
+
+  String get freesoundApiKey => _prefs.getString(_freesoundApiKeyKey) ?? '';
+  Future<void> setFreesoundApiKey(String value) =>
+      _prefs.setString(_freesoundApiKeyKey, value.trim());
+
+  String get soundscapeApiKey => _prefs.getString(_soundscapeApiKeyKey) ?? '';
+  Future<void> setSoundscapeApiKey(String value) =>
+      _prefs.setString(_soundscapeApiKeyKey, value.trim());
+
   String get selectedFocusPresetId =>
       _prefs.getString(_selectedFocusPresetIdKey) ?? defaultFocusPresetId;
   Future<void> setSelectedFocusPresetId(String value) =>
@@ -115,6 +160,7 @@ class StorageService {
     await setMinInterval(preset.minIntervalMinutes);
     await setMaxInterval(preset.maxIntervalMinutes);
     await setFocusSoundEnabled(preset.focusSoundEnabled);
+    await setFocusSoundSourceType(FocusSoundSourceType.builtIn);
     await setRandomFocusSoundMode(preset.randomFocusSoundMode);
     await setSelectedFocusSoundId(preset.selectedFocusSoundId);
     await setSelectedFocusPresetId(preset.id);
@@ -397,6 +443,10 @@ class StorageService {
       _focusSoundEnabledKey: focusSoundEnabled,
       _selectedFocusSoundIdKey: selectedFocusSoundId,
       _randomFocusSoundModeKey: randomFocusSoundMode,
+      _focusSoundSourceTypeKey: focusSoundSourceType.name,
+      _selectedExternalFocusSoundJsonKey: selectedExternalFocusSound != null
+          ? jsonEncode(selectedExternalFocusSound!.toJson())
+          : null,
       _selectedFocusPresetIdKey: selectedFocusPresetId,
       _vibrationEnabledKey: vibrationEnabled,
       _showScienceTipsKey: showScienceTips,

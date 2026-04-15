@@ -1,10 +1,12 @@
 import 'dart:js_interop';
 
-@JS('playFocusBellTone')
-external void _playFocusBellTone(
+@JS('playFocusBellPattern')
+external void _playFocusBellPattern(
   JSNumber frequency,
   JSNumber duration,
   JSNumber volume,
+  JSString texture,
+  JSNumber pulseCount,
 );
 
 @JS('requestFocusWakeLock')
@@ -13,8 +15,24 @@ external void _requestWakeLock();
 @JS('releaseFocusWakeLock')
 external void _releaseWakeLock();
 
+void playBuiltInSoundOnWeb(
+  double frequency,
+  double duration,
+  double volume,
+  String texture,
+  int pulseCount,
+) {
+  _playFocusBellPattern(
+    frequency.toJS,
+    duration.toJS,
+    volume.toJS,
+    texture.toJS,
+    pulseCount.toJS,
+  );
+}
+
 void playToneOnWeb(double frequency, double duration, double volume) {
-  _playFocusBellTone(frequency.toJS, duration.toJS, volume.toJS);
+  playBuiltInSoundOnWeb(frequency, duration, volume, 'digital', 1);
 }
 
 void requestWakeLockOnWeb() {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/sound_data.dart';
+import '../../../core/models/focus_external_sound.dart';
 import '../../../shared/services/storage_service.dart';
 import '../models/timer_state.dart';
 import '../providers/timer_provider.dart';
@@ -190,12 +191,25 @@ class TimerPage extends ConsumerWidget {
     required bool compactLayout,
   }) {
     final preset = findFocusPresetById(storage.selectedFocusPresetId);
-    final activeSound = timerState.activeFocusSoundId != null
-        ? findFocusSoundscapeById(timerState.activeFocusSoundId!)
+    final sourceType = storage.focusSoundSourceType;
+    final selectedExternal = storage.selectedExternalFocusSound;
+    final currentExternal =
+        selectedExternal != null && selectedExternal.sourceType == sourceType
+        ? selectedExternal
         : null;
-    final configuredSound = findFocusSoundscapeById(
-      storage.selectedFocusSoundId,
-    );
+    final dynamic activeSound = sourceType == FocusSoundSourceType.builtIn
+        ? (timerState.activeFocusSoundId != null
+              ? findFocusSoundscapeById(timerState.activeFocusSoundId!)
+              : null)
+        : currentExternal;
+    final dynamic configuredSound = sourceType == FocusSoundSourceType.builtIn
+        ? findFocusSoundscapeById(storage.selectedFocusSoundId)
+        : (currentExternal ??
+              _NamedChipSound(
+                sourceType == FocusSoundSourceType.freesound
+                    ? 'Freesound'
+                    : 'Soundscape',
+              ));
 
     final summaryItems = <_OverviewChip>[
       _OverviewChip(
@@ -445,4 +459,10 @@ class _OverviewChip {
     required this.value,
     required this.icon,
   });
+}
+
+class _NamedChipSound {
+  final String name;
+
+  const _NamedChipSound(this.name);
 }

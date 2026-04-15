@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../core/constants/app_constants.dart';
 
 final soundApiServiceProvider = Provider<SoundApiService>((ref) {
@@ -38,27 +39,37 @@ class FreesoundResult {
 class SoundApiService {
   final Dio _dio = Dio();
 
-  // Freesound API Key（用户可在设置中配置自己的 key）
   String? _freesoundApiKey;
   String? _soundscapeApiKey;
 
-  void setFreesoundApiKey(String key) => _freesoundApiKey = key;
-  void setSoundscapeApiKey(String key) => _soundscapeApiKey = key;
+  void configure({String? freesoundApiKey, String? soundscapeApiKey}) {
+    _freesoundApiKey = freesoundApiKey?.trim();
+    _soundscapeApiKey = soundscapeApiKey?.trim();
+  }
 
-  /// 搜索 Freesound 音效
+  void setFreesoundApiKey(String key) => _freesoundApiKey = key.trim();
+
+  void setSoundscapeApiKey(String key) => _soundscapeApiKey = key.trim();
+
   Future<List<FreesoundResult>> searchFreesound({
     required String query,
     int pageSize = 15,
-    double maxDuration = 5.0,
+    double minDuration = 0.0,
+    double? maxDuration,
   }) async {
-    if (_freesoundApiKey == null || _freesoundApiKey!.isEmpty) return [];
+    if (_freesoundApiKey == null || _freesoundApiKey!.isEmpty) {
+      return [];
+    }
 
     try {
+      final durationFilter = maxDuration == null
+          ? 'duration:[$minDuration TO *]'
+          : 'duration:[$minDuration TO $maxDuration]';
       final response = await _dio.get(
         '${AppConstants.freesoundBaseUrl}/search/text/',
         queryParameters: {
           'query': query,
-          'filter': 'duration:[0 TO $maxDuration]',
+          'filter': durationFilter,
           'fields': 'id,name,previews,duration,username',
           'page_size': pageSize,
           'token': _freesoundApiKey,
@@ -68,15 +79,17 @@ class SoundApiService {
       final results = response.data['results'] as List? ?? [];
       return results
           .map((e) => FreesoundResult.fromJson(e as Map<String, dynamic>))
+          .where((item) => item.previewUrl.isNotEmpty)
           .toList();
     } catch (_) {
       return [];
     }
   }
 
-  /// 获取 Soundscape City 环境音 URL
   Future<String?> getSoundscapeUrl({required String environment}) async {
-    if (_soundscapeApiKey == null || _soundscapeApiKey!.isEmpty) return null;
+    if (_soundscapeApiKey == null || _soundscapeApiKey!.isEmpty) {
+      return null;
+    }
 
     try {
       final response = await _dio.get(
