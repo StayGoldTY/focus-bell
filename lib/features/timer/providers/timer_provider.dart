@@ -314,6 +314,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     _phaseStartedAt = DateTime.now();
     _phaseAccumulated = 0;
     _scheduleNextBell();
+    _playAlertSound();
     if (_shouldResumeAmbientAfterMicroRest) {
       _resumeFocusSoundscape();
     } else {
@@ -570,8 +571,9 @@ class _FocusSessionSnapshot {
       presetId: presetId ?? this.presetId,
       focusSoundId: focusSoundId != null ? focusSoundId() : this.focusSoundId,
       taskTitle: taskTitle ?? this.taskTitle,
-      taskCategoryId:
-          taskCategoryId != null ? taskCategoryId() : this.taskCategoryId,
+      taskCategoryId: taskCategoryId != null
+          ? taskCategoryId()
+          : this.taskCategoryId,
     );
   }
 }

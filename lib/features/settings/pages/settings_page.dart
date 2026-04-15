@@ -21,6 +21,9 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
+  final ExpansibleController _focusPresetController = ExpansibleController();
+  bool _focusPresetExpanded = false;
+
   @override
   Widget build(BuildContext context) {
     final storage = ref.read(storageServiceProvider);
@@ -56,7 +59,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const Divider(height: 32),
           _buildSectionHeader('专注预设', theme),
-          _buildFocusPresetSelector(storage, theme),
+          _buildFocusPresetSelector(
+            storage,
+            theme,
+            timerState.phase == TimerPhase.focusing,
+          ),
           const Divider(height: 32),
           _buildSectionHeader('专注背景音', theme),
           _buildSwitchTile(
@@ -401,13 +408,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _buildFocusPresetSelector(StorageService storage, ThemeData theme) {
+  Widget _buildFocusPresetSelector(
+    StorageService storage,
+    ThemeData theme,
+    bool isFocusing,
+  ) {
     final selectedPresetId = storage.selectedFocusPresetId;
     final selectedPreset = findFocusPresetById(selectedPresetId);
+    final timerNotifier = ref.read(timerProvider.notifier);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Column(
+      child: ExpansionTile(
+        controller: _focusPresetController,
+        onExpansionChanged: (expanded) {
+          setState(() {
+            _focusPresetExpanded = expanded;
+          });
+        },
+        leading: Icon(
+          Icons.auto_awesome_rounded,
+          color: theme.colorScheme.primary,
+        ),
+        trailing: Icon(
+          _focusPresetExpanded ? Icons.remove_rounded : Icons.add_rounded,
+          color: theme.colorScheme.primary,
+        ),
+        title: Text(selectedPreset?.name ?? '自定义方案'),
+        subtitle: Text(selectedPreset?.description ?? '已按当前设置微调'),
         children: [
           ListTile(
             leading: Icon(
@@ -433,11 +461,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       Icons.check_circle_rounded,
                       color: theme.colorScheme.primary,
                     )
-                  : const Icon(Icons.chevron_right_rounded),
+                  : Icon(
+                      Icons.radio_button_unchecked_rounded,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
               onTap: () async {
                 await storage.applyFocusPreset(preset);
-                await ref.read(audioServiceProvider).stopAmbient();
-                setState(() {});
+                timerNotifier.syncCurrentFocusSoundFromSettings();
+                if (!isFocusing) {
+                  await ref.read(audioServiceProvider).stopAmbient();
+                }
+                _focusPresetController.collapse();
+                setState(() {
+                  _focusPresetExpanded = false;
+                });
               },
             );
           }),
