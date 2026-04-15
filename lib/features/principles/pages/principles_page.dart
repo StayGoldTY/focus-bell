@@ -85,7 +85,8 @@ class PrinciplesPage extends StatelessWidget {
             appExplanation: '短暂的 10 秒中断激活"想要完成"的内在驱动力，帮助你更快回到心流状态',
             references: const [
               _Reference(
-                text: 'Nature HSS Communications (2025) - 蔡格尼克与 Ovsiankina 效应元分析',
+                text:
+                    'Nature HSS Communications (2025) - 蔡格尼克与 Ovsiankina 效应元分析',
                 url: 'https://www.nature.com/articles/s41599-025-05000-w',
               ),
             ],
@@ -108,7 +109,8 @@ class PrinciplesPage extends StatelessWidget {
             references: const [
               _Reference(
                 text: 'Physical Review E (2025) - 超日节律动力学机制模型',
-                url: 'https://journals.aps.org/pre/abstract/10.1103/PhysRevE.111.044215',
+                url:
+                    'https://journals.aps.org/pre/abstract/10.1103/PhysRevE.111.044215',
               ),
               _Reference(
                 text: 'Nature Communications (2024) - 脑组织中超日节律的颅内 EEG 证据',
@@ -116,11 +118,13 @@ class PrinciplesPage extends StatelessWidget {
               ),
               _Reference(
                 text: 'Springer (2024) - 系统性微休息对认知任务中注意力的影响',
-                url: 'https://link.springer.com/article/10.1007/s43674-024-00074-6',
+                url:
+                    'https://link.springer.com/article/10.1007/s43674-024-00074-6',
               ),
               _Reference(
                 text: 'NIH/NINDS (2021) - 短暂休息帮助大脑学习新技能',
-                url: 'https://www.ninds.nih.gov/news-events/news/press-releases/study-shows-how-taking-short-breaks-may-help-our-brains-learn-new-skills',
+                url:
+                    'https://www.ninds.nih.gov/news-events/news/press-releases/study-shows-how-taking-short-breaks-may-help-our-brains-learn-new-skills',
               ),
             ],
           ),
@@ -210,8 +214,11 @@ class _PrincipleCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.lightbulb_outline_rounded,
-                          color: color, size: 18),
+                      Icon(
+                        Icons.lightbulb_outline_rounded,
+                        color: color,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -233,30 +240,34 @@ class _PrincipleCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                ...references.map((ref) => InkWell(
-                      onTap: () => _launchUrl(ref.url),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.open_in_new_rounded,
-                                size: 14,
-                                color: theme.colorScheme.primary),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                ref.text,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.primary,
-                                  decoration: TextDecoration.underline,
-                                ),
+                ...references.map(
+                  (ref) => InkWell(
+                    onTap: () => _launchUrl(ref.url),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.open_in_new_rounded,
+                            size: 14,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              ref.text,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                decoration: TextDecoration.underline,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    )),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

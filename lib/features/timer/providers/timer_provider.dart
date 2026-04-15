@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'dart:math';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/sound_data.dart';
+import '../../../core/models/focus_session_record.dart';
 import '../../../shared/services/audio_service.dart';
 import '../../../shared/services/storage_service.dart';
 import '../models/timer_state.dart';
+import 'focus_session_draft_provider.dart';
 
 final timerProvider = StateNotifierProvider<TimerNotifier, FocusTimerState>((
   ref,
@@ -16,33 +21,26 @@ final timerProvider = StateNotifierProvider<TimerNotifier, FocusTimerState>((
 class TimerNotifier extends StateNotifier<FocusTimerState>
     with WidgetsBindingObserver {
   final Ref _ref;
-  Timer? _ticker;
+  final StorageService _storage;
+  final AudioService _audio;
   final _random = Random();
+  Timer? _ticker;
   String? _activeFocusSoundId;
-
-  /// Wall-clock anchor: when the current phase segment started
   DateTime _phaseStartedAt = DateTime.now();
-
-  /// Seconds accumulated in this phase before the current segment
-  /// (used to survive pause/resume without losing progress)
   int _phaseAccumulated = 0;
-
-  /// Total focusing seconds accumulated across micro-rest interruptions
   int _focusingAccumulated = 0;
-
-  /// Wall-clock time when the next bell should ring
   DateTime? _nextBellAt;
-
-  /// Today's focus seconds at the start of the current session
   int _baseTodayFocusSeconds = 0;
+  _FocusSessionSnapshot? _sessionSnapshot;
+  bool _shouldResumeAmbientAfterMicroRest = false;
 
-  TimerNotifier(this._ref) : super(const FocusTimerState()) {
+  TimerNotifier(this._ref)
+    : _storage = _ref.read(storageServiceProvider),
+      _audio = _ref.read(audioServiceProvider),
+      super(const FocusTimerState()) {
     WidgetsBinding.instance.addObserver(this);
     _loadTodayStats();
   }
-
-  StorageService get _storage => _ref.read(storageServiceProvider);
-  AudioService get _audio => _ref.read(audioServiceProvider);
 
   int get _currentPhaseElapsed {
     if (state.phase == TimerPhase.paused || state.phase == TimerPhase.idle) {
@@ -67,22 +65,36 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   void _loadTodayStats() {
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final today = focusDateKey(DateTime.now());
     if (_storage.todayDate != today) {
-      _storage.setTodayDate(today);
-      _storage.setTodayFocusSeconds(0);
+      unawaited(_storage.setTodayDate(today));
+      unawaited(_storage.setTodayFocusSeconds(0));
+      state = state.copyWith(todayFocusSeconds: 0);
+      return;
     }
+
     state = state.copyWith(todayFocusSeconds: _storage.todayFocusSeconds);
   }
 
   void startFocus() {
-    final totalSec = _storage.focusDuration * 60;
+    final totalSeconds = _storage.focusDuration * 60;
+    final now = DateTime.now();
+    final draft = _ref.read(focusSessionDraftProvider);
+
     _focusingAccumulated = 0;
     _phaseAccumulated = 0;
-    _phaseStartedAt = DateTime.now();
+    _phaseStartedAt = now;
     _baseTodayFocusSeconds = _storage.todayFocusSeconds;
     _scheduleNextBell();
     _selectFocusSoundscapeForSession();
+    _sessionSnapshot = _FocusSessionSnapshot(
+      startedAt: now,
+      plannedFocusSeconds: totalSeconds,
+      presetId: _storage.selectedFocusPresetId,
+      focusSoundId: _activeFocusSoundId,
+      taskTitle: draft.normalizedTitle,
+      taskCategoryId: draft.categoryId,
+    );
 
     _audio.requestWakeLock();
     _restartFocusSoundscape();
@@ -90,7 +102,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     state = state.copyWith(
       phase: TimerPhase.focusing,
       elapsedSeconds: 0,
-      totalSeconds: totalSec,
+      totalSeconds: totalSeconds,
       nextBellInSeconds: _nextBellAt!.difference(DateTime.now()).inSeconds,
       microRestCount: 0,
       activeFocusSoundId: () => _activeFocusSoundId,
@@ -126,34 +138,77 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       _restartFocusSoundscape();
     }
 
-    state = state.copyWith(phase: target, pausedFromPhase: () => null);
+    state = state.copyWith(
+      phase: target,
+      pausedFromPhase: () => null,
+      activeFocusSoundId: () => _activeFocusSoundId,
+    );
     _startTicker();
   }
 
   void stop() {
     _ticker?.cancel();
-    _audio.stopAll();
+    unawaited(_audio.stopAll());
     _audio.releaseWakeLock();
+
+    if (state.phase == TimerPhase.focusing) {
+      _captureCurrentFocusProgressBeforeExit();
+    }
 
     if (state.phase == TimerPhase.focusing ||
         state.pausedFromPhase == TimerPhase.focusing) {
-      _captureCurrentFocusProgressBeforeExit();
-      _saveFocusTime();
+      _finalizeFocusSession(
+        status: FocusSessionStatus.stopped,
+        microRestCount: state.microRestCount,
+      );
+    } else {
+      _clearSessionMetadata();
     }
-    _activeFocusSoundId = null;
-    state = FocusTimerState(todayFocusSeconds: _storage.todayFocusSeconds);
+
+    _resetToIdleState();
   }
 
   void skipBreak() {
     _ticker?.cancel();
-    _audio.stopAll();
+    unawaited(_audio.stopAll());
     _audio.releaseWakeLock();
-    _activeFocusSoundId = null;
-    state = FocusTimerState(todayFocusSeconds: _storage.todayFocusSeconds);
+    _clearSessionMetadata();
+    _resetToIdleState();
   }
 
   void extendBreak() {
     state = state.copyWith(totalSeconds: state.totalSeconds + 300);
+  }
+
+  void syncCurrentFocusSoundFromSettings() {
+    final snapshot = _sessionSnapshot;
+    if (snapshot == null) {
+      return;
+    }
+
+    _shouldResumeAmbientAfterMicroRest = false;
+
+    if (!_storage.focusSoundEnabled) {
+      _activeFocusSoundId = null;
+      _sessionSnapshot = snapshot.copyWith(focusSoundId: () => null);
+      _stopFocusSoundscape();
+      state = state.copyWith(activeFocusSoundId: () => null);
+      return;
+    }
+
+    if (_storage.randomFocusSoundMode) {
+      _selectFocusSoundscapeForSession();
+    } else {
+      _activeFocusSoundId = _storage.selectedFocusSoundId;
+    }
+
+    _sessionSnapshot = snapshot.copyWith(
+      focusSoundId: () => _activeFocusSoundId,
+    );
+    if (state.phase == TimerPhase.focusing) {
+      _restartFocusSoundscape();
+    }
+    state = state.copyWith(activeFocusSoundId: () => _activeFocusSoundId);
   }
 
   void _startTicker() {
@@ -172,7 +227,8 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       case TimerPhase.longBreak:
         _tickLongBreak();
         break;
-      default:
+      case TimerPhase.idle:
+      case TimerPhase.paused:
         break;
     }
   }
@@ -180,15 +236,18 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   void _tickFocusing() {
     final phaseElapsed = _currentPhaseElapsed;
     final totalFocusing = _focusingAccumulated + phaseElapsed;
-    final totalSec = _storage.focusDuration * 60;
-
+    final totalSeconds = _sessionSnapshot?.plannedFocusSeconds ?? 0;
     final newTodaySeconds = _baseTodayFocusSeconds + totalFocusing;
-    _storage.setTodayFocusSeconds(newTodaySeconds);
 
-    if (totalFocusing >= totalSec) {
+    unawaited(_storage.setTodayFocusSeconds(newTodaySeconds));
+
+    if (totalFocusing >= totalSeconds) {
       _ticker?.cancel();
       _focusingAccumulated = totalFocusing;
-      _saveFocusTime();
+      _finalizeFocusSession(
+        status: FocusSessionStatus.completed,
+        microRestCount: state.microRestCount,
+      );
       _startLongBreak();
       return;
     }
@@ -207,7 +266,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
 
     state = state.copyWith(
       elapsedSeconds: totalFocusing,
-      totalSeconds: totalSec,
+      totalSeconds: totalSeconds,
       nextBellInSeconds: bellIn,
       todayFocusSeconds: newTodaySeconds,
     );
@@ -226,7 +285,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     final elapsed = _currentPhaseElapsed;
     if (elapsed >= state.totalSeconds) {
       _ticker?.cancel();
-      _audio.stopAll();
+      unawaited(_audio.stopAll());
       _audio.releaseWakeLock();
       _playAlertSound();
       state = FocusTimerState(todayFocusSeconds: state.todayFocusSeconds);
@@ -236,15 +295,16 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   void _enterMicroRest() {
-    final microSec = _storage.microRestSeconds;
+    final microSeconds = _storage.microRestSeconds;
     _phaseStartedAt = DateTime.now();
     _phaseAccumulated = 0;
-    _stopFocusSoundscape();
+    _shouldResumeAmbientAfterMicroRest = _activeFocusSoundId != null;
+    _pauseFocusSoundscape();
 
     state = state.copyWith(
       phase: TimerPhase.microRest,
       elapsedSeconds: 0,
-      totalSeconds: microSec,
+      totalSeconds: microSeconds,
       microRestCount: state.microRestCount + 1,
       activeFocusSoundId: () => _activeFocusSoundId,
     );
@@ -254,30 +314,35 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     _phaseStartedAt = DateTime.now();
     _phaseAccumulated = 0;
     _scheduleNextBell();
-    final focusTotalSec = _storage.focusDuration * 60;
-    _restartFocusSoundscape();
+    if (_shouldResumeAmbientAfterMicroRest) {
+      _resumeFocusSoundscape();
+    } else {
+      _restartFocusSoundscape();
+    }
+    _shouldResumeAmbientAfterMicroRest = false;
 
     state = state.copyWith(
       phase: TimerPhase.focusing,
       elapsedSeconds: _focusingAccumulated,
-      totalSeconds: focusTotalSec,
+      totalSeconds: _sessionSnapshot?.plannedFocusSeconds ?? 0,
       nextBellInSeconds: _nextBellAt!.difference(DateTime.now()).inSeconds,
       activeFocusSoundId: () => _activeFocusSoundId,
     );
   }
 
   void _startLongBreak() {
-    final breakSec = _storage.breakDuration * 60;
-    _storage.setCompletedSessions(_storage.completedSessions + 1);
+    final breakSeconds = _storage.breakDuration * 60;
     _phaseStartedAt = DateTime.now();
     _phaseAccumulated = 0;
+    _focusingAccumulated = 0;
+    _shouldResumeAmbientAfterMicroRest = false;
     _stopFocusSoundscape();
     _activeFocusSoundId = null;
 
     state = state.copyWith(
       phase: TimerPhase.longBreak,
       elapsedSeconds: 0,
-      totalSeconds: breakSec,
+      totalSeconds: breakSeconds,
       todayFocusSeconds: state.todayFocusSeconds,
       activeFocusSoundId: () => null,
     );
@@ -285,26 +350,29 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   void _scheduleNextBell() {
-    final minSec = _storage.minInterval * 60;
-    final maxSec = _storage.maxInterval * 60;
-    final delay = minSec + _random.nextInt(maxSec - minSec + 1);
+    final minSeconds = _storage.minInterval * 60;
+    final maxSeconds = _storage.maxInterval * 60;
+    final delay = minSeconds + _random.nextInt(maxSeconds - minSeconds + 1);
     _nextBellAt = DateTime.now().add(Duration(seconds: delay));
   }
 
   void _playAlertSound() {
     final sounds = builtInSounds;
-    if (sounds.isEmpty) return;
+    if (sounds.isEmpty) {
+      return;
+    }
 
     if (_storage.randomSoundMode) {
       final sound = sounds[_random.nextInt(sounds.length)];
-      _audio.playBuiltInSound(sound, volume: _storage.alertVolume);
-    } else {
-      final sound = sounds.firstWhere(
-        (s) => s.id == _storage.selectedSoundId,
-        orElse: () => sounds.first,
-      );
-      _audio.playBuiltInSound(sound, volume: _storage.alertVolume);
+      unawaited(_audio.playBuiltInSound(sound, volume: _storage.alertVolume));
+      return;
     }
+
+    final sound = sounds.firstWhere(
+      (item) => item.id == _storage.selectedSoundId,
+      orElse: () => sounds.first,
+    );
+    unawaited(_audio.playBuiltInSound(sound, volume: _storage.alertVolume));
   }
 
   void _selectFocusSoundscapeForSession() {
@@ -328,7 +396,9 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   void _restartFocusSoundscape() {
-    if (!_storage.focusSoundEnabled || _activeFocusSoundId == null) return;
+    if (!_storage.focusSoundEnabled || _activeFocusSoundId == null) {
+      return;
+    }
 
     final soundscape = focusSoundscapes.firstWhere(
       (item) => item.id == _activeFocusSoundId,
@@ -343,24 +413,73 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     unawaited(_audio.stopAmbient());
   }
 
+  void _pauseFocusSoundscape() {
+    unawaited(_audio.pauseAmbient());
+  }
+
+  void _resumeFocusSoundscape() {
+    if (!_storage.focusSoundEnabled || _activeFocusSoundId == null) {
+      return;
+    }
+    unawaited(_audio.resumeAmbient());
+  }
+
   void _captureCurrentFocusProgressBeforeExit() {
     if (state.phase == TimerPhase.focusing) {
       _focusingAccumulated += _currentPhaseElapsed;
     }
   }
 
-  void _saveFocusTime() {
-    if (_focusingAccumulated <= 0) return;
+  void _finalizeFocusSession({
+    required FocusSessionStatus status,
+    required int microRestCount,
+  }) {
+    final snapshot = _sessionSnapshot;
+    if (snapshot == null) {
+      _clearSessionMetadata();
+      return;
+    }
 
-    _storage.setTotalFocusSeconds(
-      _storage.totalFocusSeconds + _focusingAccumulated,
-    );
-    _updateFocusStreak();
+    final shouldPersist =
+        status == FocusSessionStatus.completed ||
+        _focusingAccumulated >= AppConstants.minRecordableFocusSeconds;
+
+    if (shouldPersist && _focusingAccumulated > 0) {
+      final record = FocusSessionRecord(
+        id: _buildSessionRecordId(snapshot.startedAt),
+        deviceId: _storage.deviceId,
+        schemaVersion: AppConstants.focusSessionSchemaVersion,
+        startedAt: snapshot.startedAt,
+        endedAt: DateTime.now(),
+        actualFocusSeconds: _focusingAccumulated,
+        plannedFocusSeconds: snapshot.plannedFocusSeconds,
+        microRestCount: microRestCount,
+        status: status,
+        presetId: snapshot.presetId,
+        focusSoundId: snapshot.focusSoundId,
+        taskTitle: snapshot.taskTitle,
+        taskCategoryId: snapshot.taskCategoryId,
+      );
+
+      unawaited(_storage.appendSessionRecord(record));
+      unawaited(
+        _storage.setTotalFocusSeconds(
+          _storage.totalFocusSeconds + _focusingAccumulated,
+        ),
+      );
+      if (status == FocusSessionStatus.completed) {
+        unawaited(
+          _storage.setCompletedSessions(_storage.completedSessions + 1),
+        );
+      }
+      _updateFocusStreak(record.startedAt);
+    }
+
+    _clearSessionMetadata();
   }
 
-  void _updateFocusStreak() {
-    final today = DateTime.now();
-    final todayKey = today.toIso8601String().substring(0, 10);
+  void _updateFocusStreak(DateTime focusDate) {
+    final todayKey = focusDateKey(focusDate);
     final lastKey = _storage.lastFocusDate;
 
     if (lastKey == todayKey) {
@@ -372,9 +491,12 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     if (lastKey.isNotEmpty) {
       final lastDate = DateTime.tryParse(lastKey);
       if (lastDate != null) {
-        final diffDays = today
-            .difference(DateTime(lastDate.year, lastDate.month, lastDate.day))
-            .inDays;
+        final diffDays =
+            DateTime(focusDate.year, focusDate.month, focusDate.day)
+                .difference(
+                  DateTime(lastDate.year, lastDate.month, lastDate.day),
+                )
+                .inDays;
         currentStreak = diffDays == 1 ? currentStreak + 1 : 1;
       } else {
         currentStreak = 1;
@@ -383,11 +505,30 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       currentStreak = 1;
     }
 
-    _storage.setCurrentStreak(currentStreak);
+    unawaited(_storage.setCurrentStreak(currentStreak));
     if (currentStreak > _storage.bestStreak) {
-      _storage.setBestStreak(currentStreak);
+      unawaited(_storage.setBestStreak(currentStreak));
     }
-    _storage.setLastFocusDate(todayKey);
+    unawaited(_storage.setLastFocusDate(todayKey));
+  }
+
+  String _buildSessionRecordId(DateTime startedAt) {
+    return '${_storage.deviceId}-${startedAt.microsecondsSinceEpoch}';
+  }
+
+  void _clearSessionMetadata() {
+    _sessionSnapshot = null;
+    _activeFocusSoundId = null;
+    _shouldResumeAmbientAfterMicroRest = false;
+    _ref.read(focusSessionDraftProvider.notifier).clear();
+  }
+
+  void _resetToIdleState() {
+    _focusingAccumulated = 0;
+    _phaseAccumulated = 0;
+    _nextBellAt = null;
+    _shouldResumeAmbientAfterMicroRest = false;
+    state = FocusTimerState(todayFocusSeconds: _storage.todayFocusSeconds);
   }
 
   @override
@@ -396,5 +537,41 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     WidgetsBinding.instance.removeObserver(this);
     _audio.releaseWakeLock();
     super.dispose();
+  }
+}
+
+class _FocusSessionSnapshot {
+  final DateTime startedAt;
+  final int plannedFocusSeconds;
+  final String presetId;
+  final String? focusSoundId;
+  final String? taskTitle;
+  final String? taskCategoryId;
+
+  const _FocusSessionSnapshot({
+    required this.startedAt,
+    required this.plannedFocusSeconds,
+    required this.presetId,
+    required this.focusSoundId,
+    required this.taskTitle,
+    required this.taskCategoryId,
+  });
+
+  _FocusSessionSnapshot copyWith({
+    int? plannedFocusSeconds,
+    String? presetId,
+    String? Function()? focusSoundId,
+    String? taskTitle,
+    String? Function()? taskCategoryId,
+  }) {
+    return _FocusSessionSnapshot(
+      startedAt: startedAt,
+      plannedFocusSeconds: plannedFocusSeconds ?? this.plannedFocusSeconds,
+      presetId: presetId ?? this.presetId,
+      focusSoundId: focusSoundId != null ? focusSoundId() : this.focusSoundId,
+      taskTitle: taskTitle ?? this.taskTitle,
+      taskCategoryId:
+          taskCategoryId != null ? taskCategoryId() : this.taskCategoryId,
+    );
   }
 }

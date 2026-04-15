@@ -26,7 +26,9 @@ class FreesoundResult {
     return FreesoundResult(
       id: json['id'] as int,
       name: json['name'] as String? ?? '',
-      previewUrl: (previews['preview-lq-mp3'] ?? previews['preview-hq-mp3'] ?? '') as String,
+      previewUrl:
+          (previews['preview-lq-mp3'] ?? previews['preview-hq-mp3'] ?? '')
+              as String,
       duration: (json['duration'] as num?)?.toDouble() ?? 0,
       username: json['username'] as String? ?? '',
     );

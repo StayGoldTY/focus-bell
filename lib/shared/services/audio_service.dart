@@ -12,6 +12,10 @@ final audioServiceProvider = Provider<AudioService>((ref) {
 });
 
 class AudioService {
+  static const _focusSoundscapeLoopSeconds = 36.0;
+  static const _focusSoundscapeWarmupSeconds = 2.0;
+  static const _focusSoundscapeSeamSeconds = 1.25;
+
   AudioPlayer? _alertPlayer;
   AudioPlayer? _ambientPlayer;
   final _random = Random();
@@ -78,8 +82,7 @@ class AudioService {
 
   Future<void> playNoise({required NoiseType type, double volume = 0.5}) async {
     try {
-      await stopAmbient();
-      _ambientPlayer = AudioPlayer();
+      await _recreateAmbientPlayer();
       await _ambientPlayer!.setVolume(volume);
       final audioData = _generateNoiseWav(
         type: type,
@@ -100,12 +103,11 @@ class AudioService {
     double volume = 0.35,
   }) async {
     try {
-      await stopAmbient();
-      _ambientPlayer = AudioPlayer();
+      await _recreateAmbientPlayer();
       await _ambientPlayer!.setVolume(volume);
       final audioData = _generateFocusSoundscapeWav(
         kind: soundscape.kind,
-        durationSeconds: 12,
+        durationSeconds: _focusSoundscapeLoopSeconds,
         sampleRate: 44100,
       );
       final source = _WavAudioSource(audioData);
@@ -133,6 +135,14 @@ class AudioService {
     await _ambientPlayer?.stop();
   }
 
+  Future<void> pauseAmbient() async {
+    await _ambientPlayer?.pause();
+  }
+
+  Future<void> resumeAmbient() async {
+    await _ambientPlayer?.play();
+  }
+
   Future<void> stopAll() async {
     await stopAlert();
     await stopAmbient();
@@ -149,6 +159,12 @@ class AudioService {
   void dispose() {
     _alertPlayer?.dispose();
     _ambientPlayer?.dispose();
+  }
+
+  Future<void> _recreateAmbientPlayer() async {
+    await _ambientPlayer?.stop();
+    await _ambientPlayer?.dispose();
+    _ambientPlayer = AudioPlayer();
   }
 
   /// 合成正弦波 WAV 数据（带淡入淡出避免爆音）
@@ -194,10 +210,94 @@ class AudioService {
     required int sampleRate,
     double gain = 1.0,
   }) {
+    final samples = _generateNoiseSamples(
+      type: type,
+      durationSeconds: durationSeconds,
+      sampleRate: sampleRate,
+      gain: gain,
+    );
+    return _encodeWav(samples, sampleRate);
+  }
+
+  Uint8List _generateFocusSoundscapeWav({
+    required FocusSoundKind kind,
+    required double durationSeconds,
+    required int sampleRate,
+  }) {
+    final rawDurationSeconds =
+        durationSeconds + _focusSoundscapeWarmupSeconds + 0.25;
+    final warmupSamples =
+        (sampleRate * _focusSoundscapeWarmupSeconds).toInt();
+    final targetSamples = (sampleRate * durationSeconds).toInt();
+    late final Float64List rawSamples;
+
+    switch (kind) {
+      case FocusSoundKind.brownNoise:
+        rawSamples = _generateNoiseSamples(
+          type: NoiseType.brown,
+          durationSeconds: rawDurationSeconds,
+          sampleRate: sampleRate,
+          gain: 0.4,
+        );
+        break;
+      case FocusSoundKind.pinkNoise:
+        rawSamples = _generateNoiseSamples(
+          type: NoiseType.pink,
+          durationSeconds: rawDurationSeconds,
+          sampleRate: sampleRate,
+          gain: 0.18,
+        );
+        break;
+      case FocusSoundKind.rainDrift:
+        rawSamples = _buildRainDriftSamples(rawDurationSeconds, sampleRate);
+        break;
+      case FocusSoundKind.forestCanopy:
+        rawSamples = _buildForestCanopySamples(rawDurationSeconds, sampleRate);
+        break;
+      case FocusSoundKind.streamFlow:
+        rawSamples = _buildStreamFlowSamples(rawDurationSeconds, sampleRate);
+        break;
+      case FocusSoundKind.oceanWave:
+        rawSamples = _buildOceanWaveSamples(rawDurationSeconds, sampleRate);
+        break;
+      case FocusSoundKind.fireplaceGlow:
+        rawSamples = _buildFireplaceGlowSamples(rawDurationSeconds, sampleRate);
+        break;
+      case FocusSoundKind.nightCrickets:
+        rawSamples =
+            _buildNightCricketsSamples(rawDurationSeconds, sampleRate);
+        break;
+      case FocusSoundKind.meditationDrone:
+        rawSamples =
+            _buildMeditationDroneSamples(rawDurationSeconds, sampleRate);
+        break;
+      case FocusSoundKind.cafeHum:
+        rawSamples = _buildCafeHumSamples(rawDurationSeconds, sampleRate);
+        break;
+      case FocusSoundKind.studyLofi:
+        rawSamples = _buildStudyLofiSamples(rawDurationSeconds, sampleRate);
+        break;
+    }
+
+    final trimmed = _trimSamples(
+      rawSamples,
+      start: warmupSamples,
+      length: targetSamples,
+    );
+    final seamless = _makeLoopSeamless(trimmed, sampleRate);
+    return _encodeWav(seamless, sampleRate);
+  }
+
+  Float64List _generateNoiseSamples({
+    required NoiseType type,
+    required double durationSeconds,
+    required int sampleRate,
+    double gain = 1.0,
+  }) {
     final numSamples = (sampleRate * durationSeconds).toInt();
     final samples = Float64List(numSamples);
+    var lastValue = 0.0;
 
-    double lastValue = 0;
     for (var i = 0; i < numSamples; i++) {
       final white = _random.nextDouble() * 2 - 1;
       switch (type) {
@@ -215,74 +315,61 @@ class AudioService {
       }
     }
 
-    return _encodeWav(samples, sampleRate);
+    return samples;
   }
 
-  Uint8List _generateFocusSoundscapeWav({
-    required FocusSoundKind kind,
-    required double durationSeconds,
-    required int sampleRate,
+  Float64List _trimSamples(
+    Float64List source, {
+    required int start,
+    required int length,
   }) {
-    switch (kind) {
-      case FocusSoundKind.brownNoise:
-        return _generateNoiseWav(
-          type: NoiseType.brown,
-          durationSeconds: durationSeconds,
-          sampleRate: sampleRate,
-          gain: 0.4,
-        );
-      case FocusSoundKind.pinkNoise:
-        return _generateNoiseWav(
-          type: NoiseType.pink,
-          durationSeconds: durationSeconds,
-          sampleRate: sampleRate,
-          gain: 0.18,
-        );
-      case FocusSoundKind.rainDrift:
-        return _encodeWav(
-          _buildRainDriftSamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
-      case FocusSoundKind.forestCanopy:
-        return _encodeWav(
-          _buildForestCanopySamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
-      case FocusSoundKind.streamFlow:
-        return _encodeWav(
-          _buildStreamFlowSamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
-      case FocusSoundKind.oceanWave:
-        return _encodeWav(
-          _buildOceanWaveSamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
-      case FocusSoundKind.fireplaceGlow:
-        return _encodeWav(
-          _buildFireplaceGlowSamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
-      case FocusSoundKind.nightCrickets:
-        return _encodeWav(
-          _buildNightCricketsSamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
-      case FocusSoundKind.meditationDrone:
-        return _encodeWav(
-          _buildMeditationDroneSamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
-      case FocusSoundKind.cafeHum:
-        return _encodeWav(
-          _buildCafeHumSamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
-      case FocusSoundKind.studyLofi:
-        return _encodeWav(
-          _buildStudyLofiSamples(durationSeconds, sampleRate),
-          sampleRate,
-        );
+    final trimmed = Float64List(length);
+    for (var i = 0; i < length; i++) {
+      trimmed[i] = source[start + i];
+    }
+    return trimmed;
+  }
+
+  Float64List _makeLoopSeamless(Float64List samples, int sampleRate) {
+    final result = Float64List.fromList(samples);
+    final seamSamples = min(
+      (sampleRate * _focusSoundscapeSeamSeconds).toInt(),
+      result.length ~/ 4,
+    );
+
+    if (seamSamples <= 1) {
+      return result;
+    }
+
+    final head = Float64List(seamSamples);
+    final tail = Float64List(seamSamples);
+    for (var i = 0; i < seamSamples; i++) {
+      head[i] = result[i];
+      tail[i] = result[result.length - seamSamples + i];
+    }
+
+    for (var i = 0; i < seamSamples; i++) {
+      final t = i / (seamSamples - 1);
+      final blendIn = 0.5 - 0.5 * cos(pi * t);
+      final blendOut = 1.0 - blendIn;
+      result[i] = head[i] * blendOut + tail[i] * blendIn;
+      result[result.length - seamSamples + i] =
+          tail[i] * blendOut + head[i] * blendIn;
+    }
+
+    _removeDcOffset(result);
+    return result;
+  }
+
+  void _removeDcOffset(Float64List samples) {
+    var sum = 0.0;
+    for (final sample in samples) {
+      sum += sample;
+    }
+
+    final mean = sum / samples.length;
+    for (var i = 0; i < samples.length; i++) {
+      samples[i] = (samples[i] - mean).clamp(-1.0, 1.0);
     }
   }
 
@@ -316,7 +403,10 @@ class AudioService {
     return samples;
   }
 
-  Float64List _buildForestCanopySamples(double durationSeconds, int sampleRate) {
+  Float64List _buildForestCanopySamples(
+    double durationSeconds,
+    int sampleRate,
+  ) {
     final numSamples = (sampleRate * durationSeconds).toInt();
     final samples = Float64List(numSamples);
     final random = Random(61);
@@ -335,15 +425,14 @@ class AudioService {
       }
       birdEnvelope *= 0.993;
 
-      final canopy =
-          breeze * 0.12 * (0.65 + 0.35 * sin(2 * pi * 0.05 * t));
+      final canopy = breeze * 0.12 * (0.65 + 0.35 * sin(2 * pi * 0.05 * t));
       final rustle =
           white * 0.012 * (0.55 + 0.45 * sin(2 * pi * 0.19 * t + 0.4));
       final chirp =
           (sin(2 * pi * birdFrequency * t) +
-                  0.4 * sin(2 * pi * birdFrequency * 1.6 * t)) *
-              birdEnvelope *
-              0.045;
+              0.4 * sin(2 * pi * birdFrequency * 1.6 * t)) *
+          birdEnvelope *
+          0.045;
       final distant = sin(2 * pi * 260 * t + sin(2 * pi * 0.08 * t)) * 0.004;
 
       samples[i] = (canopy + rustle + chirp + distant).clamp(-1.0, 1.0);
@@ -423,7 +512,8 @@ class AudioService {
       }
       ember *= 0.965;
 
-      final fireBed = warmth.abs() * 0.12 * (0.65 + 0.35 * sin(2 * pi * 0.07 * t));
+      final fireBed =
+          warmth.abs() * 0.12 * (0.65 + 0.35 * sin(2 * pi * 0.07 * t));
       final rumble =
           sin(2 * pi * 58 * t) * 0.025 + sin(2 * pi * 116 * t) * 0.01;
       final crackle =
@@ -462,8 +552,10 @@ class AudioService {
           0.028;
       final chirpB =
           sin(2 * pi * 4700 * t) *
-          pow(max(0.0, sin(2 * pi * 13.5 * t + 1.7)).toDouble(), 10)
-              .toDouble() *
+          pow(
+            max(0.0, sin(2 * pi * 13.5 * t + 1.7)).toDouble(),
+            10,
+          ).toDouble() *
           (0.55 + 0.45 * gateB) *
           0.02;
       final nightAir = air * 0.018 + sin(2 * pi * 180 * t) * 0.003;
@@ -491,10 +583,10 @@ class AudioService {
       final breath = 0.7 + 0.3 * sin(2 * pi * 0.045 * t - pi / 2);
       final drone =
           (sin(2 * pi * 110 * t) +
-                  0.6 * sin(2 * pi * 165 * t + 0.3) +
-                  0.35 * sin(2 * pi * 220 * t + 1.2)) *
-              0.035 *
-              breath;
+              0.6 * sin(2 * pi * 165 * t + 0.3) +
+              0.35 * sin(2 * pi * 220 * t + 1.2)) *
+          0.035 *
+          breath;
       final shimmer =
           sin(2 * pi * 528 * t + 0.25 * sin(2 * pi * 0.12 * t)) *
           0.01 *
@@ -565,7 +657,16 @@ class AudioService {
       329.63,
       293.66,
     ];
-    const bassline = <double>[130.81, 146.83, 174.61, 146.83, 130.81, 146.83, 196.0, 174.61];
+    const bassline = <double>[
+      130.81,
+      146.83,
+      174.61,
+      146.83,
+      130.81,
+      146.83,
+      196.0,
+      174.61,
+    ];
     final random = Random(131);
     var dust = 0.0;
     const melodyStep = 0.75;
@@ -582,23 +683,23 @@ class AudioService {
       final note = melody[melodyIndex];
       final lead =
           (sin(2 * pi * note * t) * 0.02 +
-                  sin(2 * pi * note * 2 * t) * 0.008 +
-                  sin(2 * pi * note * 3 * t) * 0.003) *
-              melodyEnv;
+              sin(2 * pi * note * 2 * t) * 0.008 +
+              sin(2 * pi * note * 3 * t) * 0.003) *
+          melodyEnv;
 
       final bassIndex = ((t / bassStep).floor()) % bassline.length;
       final bassPhase = t - (t / bassStep).floor() * bassStep;
       final bassEnv = exp(-2.8 * bassPhase);
       final bass =
           (sin(2 * pi * bassline[bassIndex] * t) +
-                  0.4 * sin(2 * pi * bassline[bassIndex] * 2 * t)) *
-              0.018 *
-              bassEnv;
+              0.4 * sin(2 * pi * bassline[bassIndex] * 2 * t)) *
+          0.018 *
+          bassEnv;
 
       final pad =
           (sin(2 * pi * 196 * t + 0.2 * sin(2 * pi * 0.08 * t)) +
-                  0.6 * sin(2 * pi * 246.94 * t + 1.0)) *
-              0.01;
+              0.6 * sin(2 * pi * 246.94 * t + 1.0)) *
+          0.01;
       final vinyl = dust * 0.01;
 
       samples[i] = (lead + bass + pad + vinyl).clamp(-1.0, 1.0);

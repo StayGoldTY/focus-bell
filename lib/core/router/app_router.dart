@@ -13,27 +13,23 @@ final appRouter = GoRouter(
       routes: [
         GoRoute(
           path: '/timer',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: TimerPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: TimerPage()),
         ),
         GoRoute(
           path: '/statistics',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: StatisticsPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: StatisticsPage()),
         ),
         GoRoute(
           path: '/principles',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: PrinciplesPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: PrinciplesPage()),
         ),
         GoRoute(
           path: '/settings',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: SettingsPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SettingsPage()),
         ),
       ],
     ),

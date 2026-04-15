@@ -65,11 +65,11 @@ class LongBreakOverlay extends ConsumerWidget {
                 label: '放松身心',
                 size: 240,
               ).animate().scale(
-                    begin: const Offset(0.8, 0.8),
-                    end: const Offset(1, 1),
-                    duration: 600.ms,
-                    curve: Curves.easeOutBack,
-                  ),
+                begin: const Offset(0.8, 0.8),
+                end: const Offset(1, 1),
+                duration: 600.ms,
+                curve: Curves.easeOutBack,
+              ),
 
               const Spacer(flex: 1),
 
@@ -79,8 +79,9 @@ class LongBreakOverlay extends ConsumerWidget {
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerLow
-                        .withValues(alpha: 0.8),
+                    color: theme.colorScheme.surfaceContainerLow.withValues(
+                      alpha: 0.8,
+                    ),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(

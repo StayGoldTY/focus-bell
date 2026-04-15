@@ -1,33 +1,13 @@
-enum TimerPhase {
-  idle,
-  focusing,
-  microRest,
-  longBreak,
-  paused,
-}
+enum TimerPhase { idle, focusing, microRest, longBreak, paused }
 
 class FocusTimerState {
   final TimerPhase phase;
-
-  /// 当前阶段已经过的秒数
   final int elapsedSeconds;
-
-  /// 当前阶段的总时长（秒）
   final int totalSeconds;
-
-  /// 距离下次铃声的剩余秒数
   final int nextBellInSeconds;
-
-  /// 本轮已完成的微休息次数
   final int microRestCount;
-
-  /// 今日已专注总秒数
   final int todayFocusSeconds;
-
-  /// 本轮实际激活的专注背景音 ID
   final String? activeFocusSoundId;
-
-  /// 暂停前的阶段
   final TimerPhase? pausedFromPhase;
 
   const FocusTimerState({
@@ -43,11 +23,10 @@ class FocusTimerState {
 
   int get remainingSeconds => totalSeconds - elapsedSeconds;
 
-  double get progress =>
-      totalSeconds > 0 ? elapsedSeconds / totalSeconds : 0.0;
+  double get progress => totalSeconds > 0 ? elapsedSeconds / totalSeconds : 0.0;
 
   String get remainingFormatted {
-    final remaining = remainingSeconds;
+    final remaining = remainingSeconds.clamp(0, totalSeconds);
     final minutes = remaining ~/ 60;
     final seconds = remaining % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
@@ -60,7 +39,7 @@ class FocusTimerState {
       case TimerPhase.focusing:
         return '专注中';
       case TimerPhase.microRest:
-        return '闭眼休息';
+        return '闭眼微休息';
       case TimerPhase.longBreak:
         return '深度休息';
       case TimerPhase.paused:
@@ -88,7 +67,9 @@ class FocusTimerState {
       activeFocusSoundId: activeFocusSoundId != null
           ? activeFocusSoundId()
           : this.activeFocusSoundId,
-      pausedFromPhase: pausedFromPhase != null ? pausedFromPhase() : this.pausedFromPhase,
+      pausedFromPhase: pausedFromPhase != null
+          ? pausedFromPhase()
+          : this.pausedFromPhase,
     );
   }
 }

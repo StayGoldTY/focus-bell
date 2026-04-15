@@ -1,79 +1,112 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/sound_data.dart';
+import '../../core/models/focus_backup_payload.dart';
+import '../../core/models/focus_session_record.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   throw UnimplementedError('Must be overridden in main');
 });
 
 class StorageService {
+  static const _focusDurationKey = 'focusDuration';
+  static const _breakDurationKey = 'breakDuration';
+  static const _microRestSecondsKey = 'microRestSeconds';
+  static const _minIntervalKey = 'minInterval';
+  static const _maxIntervalKey = 'maxInterval';
+  static const _selectedSoundIdKey = 'selectedSoundId';
+  static const _randomSoundModeKey = 'randomSoundMode';
+  static const _focusSoundEnabledKey = 'focusSoundEnabled';
+  static const _selectedFocusSoundIdKey = 'selectedFocusSoundId';
+  static const _randomFocusSoundModeKey = 'randomFocusSoundMode';
+  static const _selectedFocusPresetIdKey = 'selectedFocusPresetId';
+  static const _vibrationEnabledKey = 'vibrationEnabled';
+  static const _showScienceTipsKey = 'showScienceTips';
+  static const _themeModeKey = 'themeMode';
+  static const _colorSchemeIdKey = 'colorSchemeId';
+  static const _alertVolumeKey = 'alertVolume';
+  static const _ambientVolumeKey = 'ambientVolume';
+  static const _focusSoundVolumeKey = 'focusSoundVolume';
+  static const _dailyGoalMinutesKey = 'dailyGoalMinutes';
+  static const _deviceIdKey = 'deviceId';
+  static const _sessionRecordsJsonKey = 'sessionRecordsJson';
+  static const _totalFocusSecondsKey = 'totalFocusSeconds';
+  static const _completedSessionsKey = 'completedSessions';
+  static const _todayFocusSecondsKey = 'todayFocusSeconds';
+  static const _todayDateKey = 'todayDate';
+  static const _currentStreakKey = 'currentStreak';
+  static const _bestStreakKey = 'bestStreak';
+  static const _lastFocusDateKey = 'lastFocusDate';
+
   final SharedPreferences _prefs;
+  final Random _random = Random.secure();
+
   StorageService(this._prefs);
 
-  // 专注时长（分钟）
   int get focusDuration =>
-      _prefs.getInt('focusDuration') ??
+      _prefs.getInt(_focusDurationKey) ??
       AppConstants.defaultFocusDurationMinutes;
-  Future<void> setFocusDuration(int v) => _prefs.setInt('focusDuration', v);
+  Future<void> setFocusDuration(int value) =>
+      _prefs.setInt(_focusDurationKey, value);
 
-  // 休息时长（分钟）
   int get breakDuration =>
-      _prefs.getInt('breakDuration') ??
+      _prefs.getInt(_breakDurationKey) ??
       AppConstants.defaultBreakDurationMinutes;
-  Future<void> setBreakDuration(int v) => _prefs.setInt('breakDuration', v);
+  Future<void> setBreakDuration(int value) =>
+      _prefs.setInt(_breakDurationKey, value);
 
-  // 微休息时长（秒）
   int get microRestSeconds =>
-      _prefs.getInt('microRestSeconds') ?? AppConstants.defaultMicroRestSeconds;
-  Future<void> setMicroRestSeconds(int v) =>
-      _prefs.setInt('microRestSeconds', v);
+      _prefs.getInt(_microRestSecondsKey) ??
+      AppConstants.defaultMicroRestSeconds;
+  Future<void> setMicroRestSeconds(int value) =>
+      _prefs.setInt(_microRestSecondsKey, value);
 
-  // 随机间隔最小值（分钟）
   int get minInterval =>
-      _prefs.getInt('minInterval') ?? AppConstants.defaultMinIntervalMinutes;
-  Future<void> setMinInterval(int v) => _prefs.setInt('minInterval', v);
+      _prefs.getInt(_minIntervalKey) ?? AppConstants.defaultMinIntervalMinutes;
+  Future<void> setMinInterval(int value) =>
+      _prefs.setInt(_minIntervalKey, value);
 
-  // 随机间隔最大值（分钟）
   int get maxInterval =>
-      _prefs.getInt('maxInterval') ?? AppConstants.defaultMaxIntervalMinutes;
-  Future<void> setMaxInterval(int v) => _prefs.setInt('maxInterval', v);
+      _prefs.getInt(_maxIntervalKey) ?? AppConstants.defaultMaxIntervalMinutes;
+  Future<void> setMaxInterval(int value) =>
+      _prefs.setInt(_maxIntervalKey, value);
 
-  // 选中的提示音 ID
   String get selectedSoundId =>
-      _prefs.getString('selectedSoundId') ?? 'singing_bowl';
-  Future<void> setSelectedSoundId(String v) =>
-      _prefs.setString('selectedSoundId', v);
+      _prefs.getString(_selectedSoundIdKey) ?? 'singing_bowl';
+  Future<void> setSelectedSoundId(String value) =>
+      _prefs.setString(_selectedSoundIdKey, value);
 
-  // 随机提示音模式
-  bool get randomSoundMode => _prefs.getBool('randomSoundMode') ?? false;
-  Future<void> setRandomSoundMode(bool v) =>
-      _prefs.setBool('randomSoundMode', v);
+  bool get randomSoundMode => _prefs.getBool(_randomSoundModeKey) ?? false;
+  Future<void> setRandomSoundMode(bool value) =>
+      _prefs.setBool(_randomSoundModeKey, value);
 
-  // 专注背景音开关
-  bool get focusSoundEnabled => _prefs.getBool('focusSoundEnabled') ?? false;
-  Future<void> setFocusSoundEnabled(bool v) =>
-      _prefs.setBool('focusSoundEnabled', v);
+  bool get focusSoundEnabled => _prefs.getBool(_focusSoundEnabledKey) ?? false;
+  Future<void> setFocusSoundEnabled(bool value) =>
+      _prefs.setBool(_focusSoundEnabledKey, value);
 
-  // 选中的专注背景音 ID
   String get selectedFocusSoundId =>
-      _prefs.getString('selectedFocusSoundId') ?? 'brown_noise';
-  Future<void> setSelectedFocusSoundId(String v) =>
-      _prefs.setString('selectedFocusSoundId', v);
+      _prefs.getString(_selectedFocusSoundIdKey) ?? 'brown_noise';
+  Future<void> setSelectedFocusSoundId(String value) =>
+      _prefs.setString(_selectedFocusSoundIdKey, value);
 
-  // 随机专注背景音模式
   bool get randomFocusSoundMode =>
-      _prefs.getBool('randomFocusSoundMode') ?? false;
-  Future<void> setRandomFocusSoundMode(bool v) =>
-      _prefs.setBool('randomFocusSoundMode', v);
+      _prefs.getBool(_randomFocusSoundModeKey) ?? false;
+  Future<void> setRandomFocusSoundMode(bool value) =>
+      _prefs.setBool(_randomFocusSoundModeKey, value);
 
-  // 当前选择的专注预设
   String get selectedFocusPresetId =>
-      _prefs.getString('selectedFocusPresetId') ?? defaultFocusPresetId;
-  Future<void> setSelectedFocusPresetId(String v) =>
-      _prefs.setString('selectedFocusPresetId', v);
+      _prefs.getString(_selectedFocusPresetIdKey) ?? defaultFocusPresetId;
+  Future<void> setSelectedFocusPresetId(String value) =>
+      _prefs.setString(_selectedFocusPresetIdKey, value);
+
   Future<void> markFocusPresetCustom() =>
-      _prefs.setString('selectedFocusPresetId', customFocusPresetId);
+      _prefs.setString(_selectedFocusPresetIdKey, customFocusPresetId);
 
   Future<void> applyFocusPreset(FocusPreset preset) async {
     await setFocusDuration(preset.focusDurationMinutes);
@@ -85,68 +118,420 @@ class StorageService {
     await setRandomFocusSoundMode(preset.randomFocusSoundMode);
     await setSelectedFocusSoundId(preset.selectedFocusSoundId);
     await setSelectedFocusPresetId(preset.id);
+    if (!_prefs.containsKey(_dailyGoalMinutesKey)) {
+      await setDailyGoalMinutes(preset.focusDurationMinutes);
+    }
   }
 
-  // 震动开关
-  bool get vibrationEnabled => _prefs.getBool('vibrationEnabled') ?? true;
-  Future<void> setVibrationEnabled(bool v) =>
-      _prefs.setBool('vibrationEnabled', v);
+  bool get vibrationEnabled => _prefs.getBool(_vibrationEnabledKey) ?? true;
+  Future<void> setVibrationEnabled(bool value) =>
+      _prefs.setBool(_vibrationEnabledKey, value);
 
-  // 科学贴士显示
-  bool get showScienceTips => _prefs.getBool('showScienceTips') ?? true;
-  Future<void> setShowScienceTips(bool v) =>
-      _prefs.setBool('showScienceTips', v);
+  bool get showScienceTips => _prefs.getBool(_showScienceTipsKey) ?? true;
+  Future<void> setShowScienceTips(bool value) =>
+      _prefs.setBool(_showScienceTipsKey, value);
 
-  // 主题模式: 'light', 'dark', 'system'
-  String get themeMode => _prefs.getString('themeMode') ?? 'system';
-  Future<void> setThemeMode(String v) => _prefs.setString('themeMode', v);
+  String get themeMode => _prefs.getString(_themeModeKey) ?? 'system';
+  Future<void> setThemeMode(String value) =>
+      _prefs.setString(_themeModeKey, value);
 
-  // 主题配色方案 ID
-  String get colorSchemeId => _prefs.getString('colorSchemeId') ?? 'deep_blue';
-  Future<void> setColorSchemeId(String v) =>
-      _prefs.setString('colorSchemeId', v);
+  String get colorSchemeId =>
+      _prefs.getString(_colorSchemeIdKey) ?? 'deep_blue';
+  Future<void> setColorSchemeId(String value) =>
+      _prefs.setString(_colorSchemeIdKey, value);
 
-  // 提示音音量 0.0~1.0
-  double get alertVolume => _prefs.getDouble('alertVolume') ?? 0.7;
-  Future<void> setAlertVolume(double v) => _prefs.setDouble('alertVolume', v);
+  double get alertVolume => _prefs.getDouble(_alertVolumeKey) ?? 0.7;
+  Future<void> setAlertVolume(double value) =>
+      _prefs.setDouble(_alertVolumeKey, value);
 
-  // 环境音音量
-  double get ambientVolume => _prefs.getDouble('ambientVolume') ?? 0.5;
-  Future<void> setAmbientVolume(double v) =>
-      _prefs.setDouble('ambientVolume', v);
+  double get ambientVolume => _prefs.getDouble(_ambientVolumeKey) ?? 0.5;
+  Future<void> setAmbientVolume(double value) =>
+      _prefs.setDouble(_ambientVolumeKey, value);
 
-  // 专注背景音音量
   double get focusSoundVolume =>
-      _prefs.getDouble('focusSoundVolume') ?? ambientVolume;
-  Future<void> setFocusSoundVolume(double v) =>
-      _prefs.setDouble('focusSoundVolume', v);
+      _prefs.getDouble(_focusSoundVolumeKey) ?? ambientVolume;
+  Future<void> setFocusSoundVolume(double value) =>
+      _prefs.setDouble(_focusSoundVolumeKey, value);
 
-  // 统计数据：总专注秒数
-  int get totalFocusSeconds => _prefs.getInt('totalFocusSeconds') ?? 0;
-  Future<void> setTotalFocusSeconds(int v) =>
-      _prefs.setInt('totalFocusSeconds', v);
+  int get dailyGoalMinutes {
+    final existing = _prefs.getInt(_dailyGoalMinutesKey);
+    if (existing != null) {
+      return existing;
+    }
 
-  // 统计数据：完成轮次
-  int get completedSessions => _prefs.getInt('completedSessions') ?? 0;
-  Future<void> setCompletedSessions(int v) =>
-      _prefs.setInt('completedSessions', v);
+    final fallback = focusDuration.clamp(
+      AppConstants.minDailyGoalMinutes,
+      AppConstants.maxDailyGoalMinutes,
+    );
+    unawaited(_prefs.setInt(_dailyGoalMinutesKey, fallback));
+    return fallback;
+  }
 
-  // 今日专注秒数
-  int get todayFocusSeconds => _prefs.getInt('todayFocusSeconds') ?? 0;
-  Future<void> setTodayFocusSeconds(int v) =>
-      _prefs.setInt('todayFocusSeconds', v);
+  Future<void> setDailyGoalMinutes(int value) =>
+      _prefs.setInt(_dailyGoalMinutesKey, value);
 
-  // 今日日期标记
-  String get todayDate => _prefs.getString('todayDate') ?? '';
-  Future<void> setTodayDate(String v) => _prefs.setString('todayDate', v);
+  String get deviceId {
+    final existing = _prefs.getString(_deviceIdKey);
+    if (existing != null && existing.isNotEmpty) {
+      return existing;
+    }
 
-  // 连续专注天数
-  int get currentStreak => _prefs.getInt('currentStreak') ?? 0;
-  Future<void> setCurrentStreak(int v) => _prefs.setInt('currentStreak', v);
+    final created = _generateId(prefix: 'device');
+    unawaited(_prefs.setString(_deviceIdKey, created));
+    return created;
+  }
 
-  int get bestStreak => _prefs.getInt('bestStreak') ?? 0;
-  Future<void> setBestStreak(int v) => _prefs.setInt('bestStreak', v);
+  Future<void> setDeviceId(String value) =>
+      _prefs.setString(_deviceIdKey, value);
 
-  String get lastFocusDate => _prefs.getString('lastFocusDate') ?? '';
-  Future<void> setLastFocusDate(String v) => _prefs.setString('lastFocusDate', v);
+  int get totalFocusSeconds => _prefs.getInt(_totalFocusSecondsKey) ?? 0;
+  Future<void> setTotalFocusSeconds(int value) =>
+      _prefs.setInt(_totalFocusSecondsKey, value);
+
+  int get completedSessions => _prefs.getInt(_completedSessionsKey) ?? 0;
+  Future<void> setCompletedSessions(int value) =>
+      _prefs.setInt(_completedSessionsKey, value);
+
+  int get todayFocusSeconds => _prefs.getInt(_todayFocusSecondsKey) ?? 0;
+  Future<void> setTodayFocusSeconds(int value) =>
+      _prefs.setInt(_todayFocusSecondsKey, value);
+
+  String get todayDate => _prefs.getString(_todayDateKey) ?? '';
+  Future<void> setTodayDate(String value) =>
+      _prefs.setString(_todayDateKey, value);
+
+  int get currentStreak => _prefs.getInt(_currentStreakKey) ?? 0;
+  Future<void> setCurrentStreak(int value) =>
+      _prefs.setInt(_currentStreakKey, value);
+
+  int get bestStreak => _prefs.getInt(_bestStreakKey) ?? 0;
+  Future<void> setBestStreak(int value) => _prefs.setInt(_bestStreakKey, value);
+
+  String get lastFocusDate => _prefs.getString(_lastFocusDateKey) ?? '';
+  Future<void> setLastFocusDate(String value) =>
+      _prefs.setString(_lastFocusDateKey, value);
+
+  int getEffectiveCurrentStreak({DateTime? now}) {
+    final stored = currentStreak;
+    if (stored <= 0) {
+      return 0;
+    }
+
+    final lastKey = lastFocusDate;
+    if (lastKey.isEmpty) {
+      return 0;
+    }
+
+    final lastDate = DateTime.tryParse(lastKey);
+    if (lastDate == null) {
+      return stored;
+    }
+
+    final today = _dateOnly(now ?? DateTime.now());
+    final diffDays = today.difference(_dateOnly(lastDate)).inDays;
+    if (diffDays <= 1) {
+      return stored;
+    }
+
+    return 0;
+  }
+
+  Future<int> normalizeTodayStats({DateTime? now}) async {
+    final todayKey = focusDateKey(now ?? DateTime.now());
+    if (todayDate != todayKey) {
+      await setTodayDate(todayKey);
+      await setTodayFocusSeconds(0);
+      return 0;
+    }
+
+    return todayFocusSeconds;
+  }
+
+  List<FocusSessionRecord> getSessionRecords() {
+    final raw = _prefs.getString(_sessionRecordsJsonKey);
+    if (raw == null || raw.isEmpty) {
+      return const [];
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List<dynamic>) {
+        return const [];
+      }
+
+      final records = decoded
+          .whereType<Map<dynamic, dynamic>>()
+          .map(
+            (item) =>
+                FocusSessionRecord.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+      records.sort((a, b) => b.endedAt.compareTo(a.endedAt));
+      return records;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> appendSessionRecord(FocusSessionRecord record) async {
+    final records = [...getSessionRecords()];
+    records.removeWhere((item) => item.id == record.id);
+    records.add(record);
+    records.sort((a, b) => b.endedAt.compareTo(a.endedAt));
+    final trimmed = records.take(AppConstants.focusHistoryLimit).toList();
+    await _writeSessionRecords(trimmed);
+  }
+
+  FocusBackupPayload exportBackup() {
+    return FocusBackupPayload(
+      version: AppConstants.backupSchemaVersion,
+      exportedAt: DateTime.now(),
+      deviceId: deviceId,
+      settings: _exportSettingsMap(),
+      stats: _exportStatsMap(),
+      sessions: getSessionRecords(),
+    );
+  }
+
+  Future<void> restoreBackup(FocusBackupPayload payload) async {
+    if (payload.version > AppConstants.backupSchemaVersion) {
+      throw const FormatException('Backup version is newer than this app.');
+    }
+
+    await _restoreSettings(payload.settings);
+    await _restoreStats(payload.stats);
+    await _writeSessionRecords(
+      payload.sessions.take(AppConstants.focusHistoryLimit).toList(),
+    );
+    await normalizeTodayStats();
+  }
+
+  Future<void> clearHistoryOnly() async {
+    await _writeSessionRecords(const []);
+    await setTotalFocusSeconds(0);
+    await setCompletedSessions(0);
+    await setTodayFocusSeconds(0);
+    await setTodayDate(focusDateKey(DateTime.now()));
+    await setCurrentStreak(0);
+    await setBestStreak(0);
+    await setLastFocusDate('');
+  }
+
+  Future<void> recomputeStatsFromRecords({DateTime? now}) async {
+    final today = _dateOnly(now ?? DateTime.now());
+    final todayKey = focusDateKey(today);
+    final records = getSessionRecords();
+
+    var total = 0;
+    var completed = 0;
+    var todayTotal = 0;
+    final perDay = <String, int>{};
+
+    for (final record in records) {
+      total += record.actualFocusSeconds;
+      if (record.status == FocusSessionStatus.completed) {
+        completed += 1;
+      }
+
+      final dayKey = focusDateKey(record.startedAt);
+      perDay.update(
+        dayKey,
+        (value) => value + record.actualFocusSeconds,
+        ifAbsent: () => record.actualFocusSeconds,
+      );
+      if (dayKey == todayKey) {
+        todayTotal += record.actualFocusSeconds;
+      }
+    }
+
+    final sortedDays = perDay.keys.toList()..sort();
+    final best = _computeBestStreak(sortedDays);
+    final current = _computeCurrentStreak(sortedDays, today);
+    final latestDay = sortedDays.isEmpty ? '' : sortedDays.last;
+
+    await setTotalFocusSeconds(total);
+    await setCompletedSessions(completed);
+    await setTodayDate(todayKey);
+    await setTodayFocusSeconds(todayTotal);
+    await setCurrentStreak(current);
+    await setBestStreak(best);
+    await setLastFocusDate(latestDay);
+  }
+
+  Map<String, int> getRecentDailyFocusSeconds({int days = 7, DateTime? now}) {
+    final today = _dateOnly(now ?? DateTime.now());
+    final records = getSessionRecords();
+    final result = <String, int>{};
+
+    for (var index = days - 1; index >= 0; index--) {
+      final day = today.subtract(Duration(days: index));
+      result[focusDateKey(day)] = 0;
+    }
+
+    for (final record in records) {
+      final dayKey = focusDateKey(record.startedAt);
+      if (result.containsKey(dayKey)) {
+        result[dayKey] = result[dayKey]! + record.actualFocusSeconds;
+      }
+    }
+
+    return result;
+  }
+
+  Future<void> _writeSessionRecords(List<FocusSessionRecord> records) {
+    final encoded = jsonEncode(
+      records.map((record) => record.toJson()).toList(),
+    );
+    return _prefs.setString(_sessionRecordsJsonKey, encoded);
+  }
+
+  Map<String, Object?> _exportSettingsMap() {
+    return {
+      _focusDurationKey: focusDuration,
+      _breakDurationKey: breakDuration,
+      _microRestSecondsKey: microRestSeconds,
+      _minIntervalKey: minInterval,
+      _maxIntervalKey: maxInterval,
+      _selectedSoundIdKey: selectedSoundId,
+      _randomSoundModeKey: randomSoundMode,
+      _focusSoundEnabledKey: focusSoundEnabled,
+      _selectedFocusSoundIdKey: selectedFocusSoundId,
+      _randomFocusSoundModeKey: randomFocusSoundMode,
+      _selectedFocusPresetIdKey: selectedFocusPresetId,
+      _vibrationEnabledKey: vibrationEnabled,
+      _showScienceTipsKey: showScienceTips,
+      _themeModeKey: themeMode,
+      _colorSchemeIdKey: colorSchemeId,
+      _alertVolumeKey: alertVolume,
+      _ambientVolumeKey: ambientVolume,
+      _focusSoundVolumeKey: focusSoundVolume,
+      _dailyGoalMinutesKey: dailyGoalMinutes,
+    };
+  }
+
+  Map<String, Object?> _exportStatsMap() {
+    return {
+      _totalFocusSecondsKey: totalFocusSeconds,
+      _completedSessionsKey: completedSessions,
+      _todayFocusSecondsKey: todayFocusSeconds,
+      _todayDateKey: todayDate,
+      _currentStreakKey: currentStreak,
+      _bestStreakKey: bestStreak,
+      _lastFocusDateKey: lastFocusDate,
+    };
+  }
+
+  Future<void> _restoreSettings(Map<String, Object?> settings) async {
+    Future<void> writeValue(String key, Object? value) async {
+      if (value is int) {
+        await _prefs.setInt(key, value);
+      } else if (value is double) {
+        await _prefs.setDouble(key, value);
+      } else if (value is bool) {
+        await _prefs.setBool(key, value);
+      } else if (value is String) {
+        await _prefs.setString(key, value);
+      }
+    }
+
+    for (final entry in settings.entries) {
+      await writeValue(entry.key, entry.value);
+    }
+  }
+
+  Future<void> _restoreStats(Map<String, Object?> stats) async {
+    Future<void> writeInt(String key, Object? value) async {
+      if (value is int) {
+        await _prefs.setInt(key, value);
+      }
+    }
+
+    Future<void> writeString(String key, Object? value) async {
+      if (value is String) {
+        await _prefs.setString(key, value);
+      }
+    }
+
+    await writeInt(_totalFocusSecondsKey, stats[_totalFocusSecondsKey]);
+    await writeInt(_completedSessionsKey, stats[_completedSessionsKey]);
+    await writeInt(_todayFocusSecondsKey, stats[_todayFocusSecondsKey]);
+    await writeString(_todayDateKey, stats[_todayDateKey]);
+    await writeInt(_currentStreakKey, stats[_currentStreakKey]);
+    await writeInt(_bestStreakKey, stats[_bestStreakKey]);
+    await writeString(_lastFocusDateKey, stats[_lastFocusDateKey]);
+  }
+
+  int _computeBestStreak(List<String> sortedDays) {
+    if (sortedDays.isEmpty) {
+      return 0;
+    }
+
+    var best = 0;
+    var current = 0;
+    DateTime? previous;
+
+    for (final dayKey in sortedDays) {
+      final date = DateTime.tryParse(dayKey);
+      if (date == null) {
+        continue;
+      }
+
+      if (previous == null ||
+          _dateOnly(date).difference(_dateOnly(previous)).inDays > 1) {
+        current = 1;
+      } else if (_dateOnly(date).difference(_dateOnly(previous)).inDays == 1) {
+        current += 1;
+      }
+
+      if (current > best) {
+        best = current;
+      }
+      previous = date;
+    }
+
+    return best;
+  }
+
+  int _computeCurrentStreak(List<String> sortedDays, DateTime today) {
+    if (sortedDays.isEmpty) {
+      return 0;
+    }
+
+    final dates = sortedDays
+        .map(DateTime.tryParse)
+        .whereType<DateTime>()
+        .map(_dateOnly)
+        .toList();
+    if (dates.isEmpty) {
+      return 0;
+    }
+
+    final last = dates.last;
+    final gap = today.difference(last).inDays;
+    if (gap > 1) {
+      return 0;
+    }
+
+    var streak = 1;
+    for (var index = dates.length - 1; index > 0; index--) {
+      final diff = dates[index].difference(dates[index - 1]).inDays;
+      if (diff == 1) {
+        streak += 1;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  DateTime _dateOnly(DateTime value) {
+    final local = value.toLocal();
+    return DateTime(local.year, local.month, local.day);
+  }
+
+  String _generateId({required String prefix}) {
+    final micros = DateTime.now().microsecondsSinceEpoch;
+    final randomBits = _random.nextInt(1 << 32).toRadixString(16);
+    return '$prefix-$micros-$randomBits';
+  }
 }

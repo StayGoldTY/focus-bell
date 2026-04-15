@@ -4,7 +4,9 @@ import '../../../core/theme/color_schemes.dart';
 import '../../../shared/services/storage_service.dart';
 
 /// 主题模式 Provider
-final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((
+  ref,
+) {
   final storage = ref.watch(storageServiceProvider);
   return ThemeModeNotifier(storage);
 });
@@ -30,8 +32,8 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
     final key = mode == ThemeMode.light
         ? 'light'
         : mode == ThemeMode.dark
-            ? 'dark'
-            : 'system';
+        ? 'dark'
+        : 'system';
     await _storage.setThemeMode(key);
   }
 }
@@ -39,20 +41,20 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 /// 配色方案 Provider
 final colorSchemeProvider =
     StateNotifierProvider<ColorSchemeNotifier, AppColorScheme>((ref) {
-  final storage = ref.watch(storageServiceProvider);
-  return ColorSchemeNotifier(storage);
-});
+      final storage = ref.watch(storageServiceProvider);
+      return ColorSchemeNotifier(storage);
+    });
 
 class ColorSchemeNotifier extends StateNotifier<AppColorScheme> {
   final StorageService _storage;
 
   ColorSchemeNotifier(this._storage)
-      : super(
-          appColorSchemes.firstWhere(
-            (s) => s.id == _storage.colorSchemeId,
-            orElse: () => appColorSchemes.first,
-          ),
-        );
+    : super(
+        appColorSchemes.firstWhere(
+          (s) => s.id == _storage.colorSchemeId,
+          orElse: () => appColorSchemes.first,
+        ),
+      );
 
   Future<void> setScheme(AppColorScheme scheme) async {
     state = scheme;

@@ -74,8 +74,9 @@ class _MicroRestOverlayState extends ConsumerState<MicroRestOverlay>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary
-                              .withValues(alpha: opacity * 0.3),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: opacity * 0.3,
+                          ),
                           blurRadius: 40,
                           spreadRadius: 10,
                         ),

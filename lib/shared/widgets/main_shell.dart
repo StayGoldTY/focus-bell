@@ -12,9 +12,21 @@ class MainShell extends ConsumerWidget {
 
   static const _navItems = [
     (icon: Icons.timer_rounded, activeIcon: Icons.timer_rounded, label: '专注'),
-    (icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart_rounded, label: '统计'),
-    (icon: Icons.school_outlined, activeIcon: Icons.school_rounded, label: '科学'),
-    (icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: '设置'),
+    (
+      icon: Icons.bar_chart_outlined,
+      activeIcon: Icons.bar_chart_rounded,
+      label: '统计',
+    ),
+    (
+      icon: Icons.school_outlined,
+      activeIcon: Icons.school_rounded,
+      label: '科学',
+    ),
+    (
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings_rounded,
+      label: '设置',
+    ),
   ];
 
   static const _routes = ['/timer', '/statistics', '/principles', '/settings'];
@@ -42,11 +54,13 @@ class MainShell extends ConsumerWidget {
           context.go(_routes[index]);
         },
         destinations: _navItems
-            .map((item) => NavigationDestination(
-                  icon: Icon(item.icon),
-                  selectedIcon: Icon(item.activeIcon),
-                  label: item.label,
-                ))
+            .map(
+              (item) => NavigationDestination(
+                icon: Icon(item.icon),
+                selectedIcon: Icon(item.activeIcon),
+                label: item.label,
+              ),
+            )
             .toList(),
       ),
     );
