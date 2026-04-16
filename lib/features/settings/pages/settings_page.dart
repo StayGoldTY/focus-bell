@@ -108,48 +108,60 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               setState(() {});
             },
           ),
-          if (storage.focusSoundEnabled) ...[
-            _buildFocusSoundSelector(
-              storage,
-              theme,
-              timerState.phase == TimerPhase.focusing,
-            ),
-            if (storage.focusSoundSourceType == FocusSoundSourceType.builtIn)
-              _buildSwitchTile(
-                '随机专注背景音',
-                '每次开始专注时自动随机选择一种内置背景音',
-                storage.randomFocusSoundMode,
-                (value) async {
-                  _markPresetCustom(storage);
-                  await storage.setRandomFocusSoundMode(value);
-                  timerNotifier.syncCurrentFocusSoundFromSettings();
-                  setState(() {});
-                },
-              ),
-            _buildSliderTile(
-              title: '背景音音量',
-              value: storage.focusSoundVolume,
-              onChanged: (value) async {
-                await storage.setFocusSoundVolume(value);
-                await ref.read(audioServiceProvider).setAmbientVolume(value);
-                setState(() {});
-              },
-            ),
+          if (!storage.focusSoundEnabled)
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: ListTile(
                 leading: Icon(
-                  Icons.stop_circle_outlined,
+                  Icons.info_outline_rounded,
                   color: theme.colorScheme.primary,
                 ),
-                title: const Text('停止试听'),
-                subtitle: const Text('停止当前正在试听的专注背景音'),
-                onTap: () async {
-                  await ref.read(audioServiceProvider).stopAmbient();
-                },
+                title: const Text('可先搜索和试听'),
+                subtitle: const Text(
+                  '即使当前关闭自动播放，你也可以先搜索、试听并选好背景音；真正开始专注时不会自动播放。',
+                ),
               ),
             ),
-          ],
+          _buildFocusSoundSelector(
+            storage,
+            theme,
+            timerState.phase == TimerPhase.focusing,
+          ),
+          if (storage.focusSoundSourceType == FocusSoundSourceType.builtIn)
+            _buildSwitchTile(
+              '随机专注背景音',
+              '每次开始专注时自动随机选择一种内置背景音',
+              storage.randomFocusSoundMode,
+              (value) async {
+                _markPresetCustom(storage);
+                await storage.setRandomFocusSoundMode(value);
+                timerNotifier.syncCurrentFocusSoundFromSettings();
+                setState(() {});
+              },
+            ),
+          _buildSliderTile(
+            title: '背景音音量',
+            value: storage.focusSoundVolume,
+            onChanged: (value) async {
+              await storage.setFocusSoundVolume(value);
+              await ref.read(audioServiceProvider).setAmbientVolume(value);
+              setState(() {});
+            },
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: ListTile(
+              leading: Icon(
+                Icons.stop_circle_outlined,
+                color: theme.colorScheme.primary,
+              ),
+              title: const Text('停止试听'),
+              subtitle: const Text('停止当前正在试听的专注背景音'),
+              onTap: () async {
+                await ref.read(audioServiceProvider).stopAmbient();
+              },
+            ),
+          ),
           const Divider(height: 32),
           _buildSectionHeader('时间参数', theme),
           _buildRangeSelector(
