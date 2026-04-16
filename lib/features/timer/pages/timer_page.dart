@@ -206,6 +206,7 @@ class TimerPage extends ConsumerWidget {
         ? findFocusSoundscapeById(storage.selectedFocusSoundId)
         : (currentExternal ??
               _NamedChipSound(switch (sourceType) {
+                FocusSoundSourceType.mainlandLibrary => '站内免费',
                 FocusSoundSourceType.wikimedia => 'Wikimedia',
                 FocusSoundSourceType.openverse => 'Openverse',
                 FocusSoundSourceType.builtIn => '内置',

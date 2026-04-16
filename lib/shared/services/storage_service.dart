@@ -120,7 +120,8 @@ class StorageService {
     try {
       final json = Map<String, dynamic>.from(jsonDecode(raw) as Map);
       final rawSource = json['sourceType'] as String?;
-      if (rawSource != FocusSoundSourceType.wikimedia.name &&
+      if (rawSource != FocusSoundSourceType.mainlandLibrary.name &&
+          rawSource != FocusSoundSourceType.wikimedia.name &&
           rawSource != FocusSoundSourceType.openverse.name) {
         return null;
       }

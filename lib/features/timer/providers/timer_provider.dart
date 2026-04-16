@@ -461,6 +461,17 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     switch (external.sourceType) {
       case FocusSoundSourceType.builtIn:
         return;
+      case FocusSoundSourceType.mainlandLibrary:
+        final soundscapeId = external.apiParam ?? external.id;
+        final soundscape = findFocusSoundscapeById(soundscapeId);
+        if (soundscape == null) {
+          return;
+        }
+        await _audio.playFocusSoundscape(
+          soundscape,
+          volume: _storage.focusSoundVolume,
+        );
+        return;
       case FocusSoundSourceType.wikimedia:
         url = external.streamUrl;
         break;

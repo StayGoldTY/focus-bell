@@ -1,0 +1,154 @@
+[
+  {
+    "id": "white_noise",
+    "name": "明亮白噪",
+    "category": "降噪",
+    "soundscapeId": "white_noise",
+    "description": "更明亮均匀，适合办公室、人声较多的环境。",
+    "tags": ["白噪音", "白噪", "white noise", "办公", "人声屏蔽"]
+  },
+  {
+    "id": "brown_noise",
+    "name": "深度棕噪",
+    "category": "降噪",
+    "soundscapeId": "brown_noise",
+    "description": "低频更稳，更适合深度沉浸、编程和长时间专注。",
+    "tags": ["棕噪", "brown noise", "深度专注", "编程", "沉浸"]
+  },
+  {
+    "id": "pink_noise",
+    "name": "柔和粉噪",
+    "category": "降噪",
+    "soundscapeId": "pink_noise",
+    "description": "更柔和的宽频底噪，适合阅读、刷题和轻写作。",
+    "tags": ["粉噪", "pink noise", "阅读", "学习", "安静"]
+  },
+  {
+    "id": "rain_drift",
+    "name": "细雨幕布",
+    "category": "自然",
+    "soundscapeId": "rain_drift",
+    "description": "柔和雨幕感，适合长时间遮蔽干扰。",
+    "tags": ["雨声", "下雨", "rain", "轻雨", "睡眠", "学习"]
+  },
+  {
+    "id": "storm_rain",
+    "name": "远雷夜雨",
+    "category": "自然",
+    "soundscapeId": "storm_rain",
+    "description": "更厚重的雨声与低沉雷鸣，氛围更完整。",
+    "tags": ["暴雨", "雷雨", "storm", "rain", "夜晚", "沉浸"]
+  },
+  {
+    "id": "forest_canopy",
+    "name": "林间晨风",
+    "category": "自然",
+    "soundscapeId": "forest_canopy",
+    "description": "风穿树梢，偶有鸟鸣，适合自然场景学习。",
+    "tags": ["森林", "forest", "树叶", "鸟鸣", "自然", "清晨"]
+  },
+  {
+    "id": "mountain_wind",
+    "name": "山口长风",
+    "category": "自然",
+    "soundscapeId": "mountain_wind",
+    "description": "更开阔的风声层次，适合高强度独处专注。",
+    "tags": ["风声", "mountain", "wind", "户外", "空旷", "极简"]
+  },
+  {
+    "id": "stream_flow",
+    "name": "山涧溪流",
+    "category": "自然",
+    "soundscapeId": "stream_flow",
+    "description": "连续细流与水面反光感，适合阅读和思考。",
+    "tags": ["溪流", "river", "stream", "流水", "阅读", "思考"]
+  },
+  {
+    "id": "cave_drip",
+    "name": "洞穴滴水",
+    "category": "自然",
+    "soundscapeId": "cave_drip",
+    "description": "带空间感的滴水与低回响，氛围更沉静。",
+    "tags": ["滴水", "cave", "drip", "回响", "环境音", "冥想"]
+  },
+  {
+    "id": "ocean_wave",
+    "name": "海浪呼吸",
+    "category": "自然",
+    "soundscapeId": "ocean_wave",
+    "description": "更缓慢的海浪起伏，帮助稳定节奏和情绪。",
+    "tags": ["海浪", "ocean", "waves", "海边", "呼吸", "放松"]
+  },
+  {
+    "id": "fireplace_glow",
+    "name": "壁炉炉火",
+    "category": "自然",
+    "soundscapeId": "fireplace_glow",
+    "description": "细碎火苗与温暖低频，适合夜晚或低照环境。",
+    "tags": ["壁炉", "fireplace", "火焰", "夜晚", "温暖", "放松"]
+  },
+  {
+    "id": "night_crickets",
+    "name": "夜色虫鸣",
+    "category": "自然",
+    "soundscapeId": "night_crickets",
+    "description": "安静夜色里的细碎虫鸣，更适合独处时使用。",
+    "tags": ["夜晚", "虫鸣", "crickets", "summer night", "安静", "独处"]
+  },
+  {
+    "id": "meditation_drone",
+    "name": "冥想音垫",
+    "category": "冥想",
+    "soundscapeId": "meditation_drone",
+    "description": "慢呼吸般的低频音垫，适合静心和恢复。",
+    "tags": ["冥想", "meditation", "drone", "恢复", "静心", "呼吸"]
+  },
+  {
+    "id": "deep_space",
+    "name": "深空静流",
+    "category": "冥想",
+    "soundscapeId": "deep_space",
+    "description": "更空旷、更轻的长线条氛围，适合超长专注。",
+    "tags": ["深空", "space", "ambient", "宇宙", "极简", "超长专注"]
+  },
+  {
+    "id": "cafe_hum",
+    "name": "咖啡馆陪伴",
+    "category": "场景",
+    "soundscapeId": "cafe_hum",
+    "description": "轻环境人声与器皿声，模拟有人陪伴的学习氛围。",
+    "tags": ["咖啡馆", "cafe", "人声", "学习", "陪伴", "ambient chatter"]
+  },
+  {
+    "id": "library_air",
+    "name": "图书馆空气",
+    "category": "场景",
+    "soundscapeId": "library_air",
+    "description": "更安静的室内空气感，适合阅读、刷题和整理资料。",
+    "tags": ["图书馆", "library", "室内", "阅读", "刷题", "安静"]
+  },
+  {
+    "id": "train_cabin",
+    "name": "列车车厢",
+    "category": "场景",
+    "soundscapeId": "train_cabin",
+    "description": "规律低频与远处轨道节奏，适合长时间稳定工作。",
+    "tags": ["列车", "火车", "train", "车厢", "通勤", "稳定"]
+  },
+  {
+    "id": "study_lofi",
+    "name": "学习轻旋律",
+    "category": "场景",
+    "soundscapeId": "study_lofi",
+    "description": "低刺激的轻循环旋律，适合阅读和轻写作。",
+    "tags": ["lofi", "学习", "旋律", "music", "轻节奏", "写作"]
+  },
+  {
+    "id": "piano_mist",
+    "name": "雾中钢琴",
+    "category": "场景",
+    "soundscapeId": "piano_mist",
+    "description": "稀疏钢琴颗粒与长尾氛围，适合需要灵感的工作。",
+    "tags": ["钢琴", "piano", "灵感", "创作", "氛围", "安静音乐"]
+  }
+]

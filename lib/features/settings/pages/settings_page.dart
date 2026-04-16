@@ -24,6 +24,8 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final ExpansibleController _focusPresetController = ExpansibleController();
+  final TextEditingController _mainlandLibraryQueryController =
+      TextEditingController(text: '雨声');
   final TextEditingController _wikimediaQueryController = TextEditingController(
     text: 'rain',
   );
@@ -32,10 +34,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   );
 
   bool _focusPresetExpanded = false;
+  bool _isSearchingMainlandLibrary = false;
   bool _isSearchingWikimedia = false;
   bool _isSearchingOpenverse = false;
+  List<MainlandLibraryAudioResult> _mainlandLibraryResults = const [];
   List<WikimediaAudioResult> _wikimediaResults = const [];
   List<OpenverseAudioResult> _openverseResults = const [];
+  String? _mainlandLibraryStatus;
   String? _wikimediaStatus;
   String? _openverseStatus;
 
@@ -47,6 +52,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   void dispose() {
     _focusPresetController.dispose();
+    _mainlandLibraryQueryController.dispose();
     _wikimediaQueryController.dispose();
     _openverseQueryController.dispose();
     super.dispose();
@@ -438,6 +444,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     Icons.offline_bolt_rounded,
                   ),
                   (
+                    FocusSoundSourceType.mainlandLibrary,
+                    '站内免费',
+                    Icons.cloud_done_rounded,
+                  ),
+                  (
                     FocusSoundSourceType.wikimedia,
                     'Wiki免费',
                     Icons.public_rounded,
@@ -586,6 +597,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: ListTile(
             leading: Icon(switch (currentSource) {
+              FocusSoundSourceType.mainlandLibrary => Icons.cloud_done_rounded,
               FocusSoundSourceType.wikimedia => Icons.public_rounded,
               FocusSoundSourceType.openverse => Icons.travel_explore_rounded,
               FocusSoundSourceType.builtIn => Icons.graphic_eq_rounded,
@@ -610,11 +622,146 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
           ),
         ),
-        if (currentSource == FocusSoundSourceType.wikimedia)
+        if (currentSource == FocusSoundSourceType.mainlandLibrary)
+          _buildMainlandLibraryPanel(storage, theme, isFocusing)
+        else if (currentSource == FocusSoundSourceType.wikimedia)
           _buildWikimediaPanel(storage, theme, isFocusing)
         else if (currentSource == FocusSoundSourceType.openverse)
           _buildOpenversePanel(storage, theme, isFocusing),
       ],
+    );
+  }
+
+  Widget _buildMainlandLibraryPanel(
+    StorageService storage,
+    ThemeData theme,
+    bool isFocusing,
+  ) {
+    final selectedExternal = _currentExternalForSource(
+      storage,
+      sourceType: FocusSoundSourceType.mainlandLibrary,
+    );
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '站内免费资源库',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '走站内同源资源，不依赖境外搜索接口，更适合中国大陆使用。搜索结果会直接映射到应用内置的长循环背景音。',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _mainlandLibraryQueryController,
+              decoration: InputDecoration(
+                labelText: '搜索关键词',
+                hintText: '例如 雨声 / 海浪 / 咖啡馆 / 图书馆 / 白噪音 / 冥想',
+                suffixIcon: _isSearchingMainlandLibrary
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.search_rounded),
+                        onPressed: _searchMainlandLibraryAudio,
+                      ),
+              ),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _searchMainlandLibraryAudio(),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final suggestion in const [
+                  '雨声',
+                  '海浪',
+                  '咖啡馆',
+                  '图书馆',
+                  '白噪音',
+                  '冥想',
+                ])
+                  ActionChip(
+                    label: Text(suggestion),
+                    onPressed: () {
+                      setState(() {
+                        _mainlandLibraryQueryController.text = suggestion;
+                      });
+                    },
+                  ),
+              ],
+            ),
+            if (_mainlandLibraryStatus != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _mainlandLibraryStatus!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+            if (_mainlandLibraryResults.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                '大陆友好可选结果',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              for (final result in _mainlandLibraryResults)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    selectedExternal?.id == 'mainland_${result.id}'
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selectedExternal?.id == 'mainland_${result.id}'
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  title: Text(result.name),
+                  subtitle: Text(
+                    '${result.category} · ${result.description}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.play_circle_outline_rounded),
+                    onPressed: () async {
+                      await _previewMainlandLibraryResult(result, storage);
+                    },
+                  ),
+                  onTap: () async {
+                    await _selectMainlandLibraryResult(
+                      result,
+                      storage,
+                      isFocusing,
+                    );
+                  },
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -882,6 +1029,89 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Future<void> _searchMainlandLibraryAudio() async {
+    final query = _mainlandLibraryQueryController.text.trim();
+
+    setState(() {
+      _isSearchingMainlandLibrary = true;
+      _mainlandLibraryStatus = '正在从站内免费资源库筛选结果...';
+    });
+
+    final results = await ref
+        .read(soundApiServiceProvider)
+        .searchMainlandLibraryAudio(query: query, limit: 12);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isSearchingMainlandLibrary = false;
+      _mainlandLibraryResults = results;
+      _mainlandLibraryStatus = results.isEmpty
+          ? '没有找到匹配结果，试试 雨声、海浪、咖啡馆、图书馆、白噪音 或 冥想。'
+          : '找到 ${results.length} 条站内免费结果，可直接试听并设为当前背景音。';
+    });
+  }
+
+  Future<void> _previewMainlandLibraryResult(
+    MainlandLibraryAudioResult result,
+    StorageService storage,
+  ) async {
+    final soundscape = findFocusSoundscapeById(result.soundscapeId);
+    if (soundscape == null) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _mainlandLibraryStatus = '没有找到对应的站内声音，请稍后再试。';
+      });
+      return;
+    }
+
+    await ref
+        .read(audioServiceProvider)
+        .playFocusSoundscape(soundscape, volume: storage.focusSoundVolume);
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _mainlandLibraryStatus = '正在试听 ${result.name}';
+    });
+  }
+
+  Future<void> _selectMainlandLibraryResult(
+    MainlandLibraryAudioResult result,
+    StorageService storage,
+    bool isFocusing,
+  ) async {
+    _markPresetCustom(storage);
+    final selectedSound = FocusExternalSound(
+      sourceType: FocusSoundSourceType.mainlandLibrary,
+      id: 'mainland_${result.id}',
+      name: result.name,
+      description: '站内免费库 · ${result.category} · ${result.description}',
+      author: 'FocusBell',
+      apiParam: result.soundscapeId,
+    );
+
+    await storage.setSelectedExternalFocusSound(selectedSound);
+    await storage.setRandomFocusSoundMode(false);
+    ref.read(timerProvider.notifier).syncCurrentFocusSoundFromSettings();
+
+    if (!isFocusing) {
+      await _previewMainlandLibraryResult(result, storage);
+    }
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _mainlandLibraryStatus = '已选择 ${result.name}';
+    });
+  }
+
   Future<void> _searchWikimediaAudio() async {
     final query = _wikimediaQueryController.text.trim();
     if (query.isEmpty) {
@@ -1058,6 +1288,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return;
     }
 
+    if (external.sourceType == FocusSoundSourceType.mainlandLibrary) {
+      final soundscapeId = external.apiParam ?? external.id;
+      final soundscape = findFocusSoundscapeById(soundscapeId);
+      if (soundscape == null) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _mainlandLibraryStatus = '没有找到对应的站内声音，请稍后再试。';
+        });
+        return;
+      }
+
+      await ref
+          .read(audioServiceProvider)
+          .playFocusSoundscape(soundscape, volume: storage.focusSoundVolume);
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _mainlandLibraryStatus = '正在试听 ${external.name}';
+      });
+      return;
+    }
+
     if (external.streamUrl == null || external.streamUrl!.isEmpty) {
       if (!mounted) {
         return;
@@ -1131,6 +1387,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     switch (sourceType) {
       case FocusSoundSourceType.builtIn:
         return '内置长循环';
+      case FocusSoundSourceType.mainlandLibrary:
+        return '站内免费资源库';
       case FocusSoundSourceType.wikimedia:
         return 'Wikimedia Commons';
       case FocusSoundSourceType.openverse:

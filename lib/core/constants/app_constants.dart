@@ -34,4 +34,6 @@ class AppConstants {
   static const String wikimediaCommonsApiUrl =
       'https://commons.wikimedia.org/w/api.php';
   static const String openverseApiUrl = 'https://api.openverse.org/v1/audio/';
+  static const String mainlandLibraryCatalogPath =
+      'assets/sounds/catalog/mainland_free_library.json';
 }
