@@ -24,42 +24,31 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final ExpansibleController _focusPresetController = ExpansibleController();
-  final TextEditingController _freesoundApiKeyController =
-      TextEditingController();
-  final TextEditingController _soundscapeApiKeyController =
-      TextEditingController();
   final TextEditingController _wikimediaQueryController = TextEditingController(
     text: 'rain',
   );
-  final TextEditingController _freesoundQueryController = TextEditingController(
+  final TextEditingController _openverseQueryController = TextEditingController(
     text: 'rain ambience',
   );
 
   bool _focusPresetExpanded = false;
   bool _isSearchingWikimedia = false;
-  bool _isSearchingFreesound = false;
-  bool _isLoadingSoundscape = false;
+  bool _isSearchingOpenverse = false;
   List<WikimediaAudioResult> _wikimediaResults = const [];
-  List<FreesoundResult> _freesoundResults = const [];
+  List<OpenverseAudioResult> _openverseResults = const [];
   String? _wikimediaStatus;
-  String? _freesoundStatus;
-  String? _soundscapeStatus;
+  String? _openverseStatus;
 
   @override
   void initState() {
     super.initState();
-    final storage = ref.read(storageServiceProvider);
-    _freesoundApiKeyController.text = storage.freesoundApiKey;
-    _soundscapeApiKeyController.text = storage.soundscapeApiKey;
   }
 
   @override
   void dispose() {
     _focusPresetController.dispose();
-    _freesoundApiKeyController.dispose();
-    _soundscapeApiKeyController.dispose();
     _wikimediaQueryController.dispose();
-    _freesoundQueryController.dispose();
+    _openverseQueryController.dispose();
     super.dispose();
   }
 
@@ -442,14 +431,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     Icons.public_rounded,
                   ),
                   (
-                    FocusSoundSourceType.freesound,
-                    'Freesound',
+                    FocusSoundSourceType.openverse,
+                    'Openverse',
                     Icons.travel_explore_rounded,
-                  ),
-                  (
-                    FocusSoundSourceType.soundscape,
-                    'Soundscape',
-                    Icons.waves_rounded,
                   ),
                 ])
                   ChoiceChip(
@@ -591,8 +575,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           child: ListTile(
             leading: Icon(switch (currentSource) {
               FocusSoundSourceType.wikimedia => Icons.public_rounded,
-              FocusSoundSourceType.freesound => Icons.travel_explore_rounded,
-              FocusSoundSourceType.soundscape => Icons.waves_rounded,
+              FocusSoundSourceType.openverse => Icons.travel_explore_rounded,
               FocusSoundSourceType.builtIn => Icons.graphic_eq_rounded,
             }, color: theme.colorScheme.primary),
             title: Text(_providerLabel(currentSource)),
@@ -617,10 +600,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         if (currentSource == FocusSoundSourceType.wikimedia)
           _buildWikimediaPanel(storage, theme, isFocusing)
-        else if (currentSource == FocusSoundSourceType.freesound)
-          _buildFreesoundPanel(storage, theme, isFocusing)
-        else if (currentSource == FocusSoundSourceType.soundscape)
-          _buildSoundscapePanel(storage, theme, isFocusing),
+        else if (currentSource == FocusSoundSourceType.openverse)
+          _buildOpenversePanel(storage, theme, isFocusing),
       ],
     );
   }
@@ -753,14 +734,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _buildFreesoundPanel(
+  Widget _buildOpenversePanel(
     StorageService storage,
     ThemeData theme,
     bool isFocusing,
   ) {
     final selectedExternal = _currentExternalForSource(
       storage,
-      sourceType: FocusSoundSourceType.freesound,
+      sourceType: FocusSoundSourceType.openverse,
     );
 
     return Card(
@@ -771,14 +752,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Freesound API',
+              'Openverse',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              '适合快速扩展可选声音库。这里优先搜索更长的环境音素材，并通过公开预览流做试听和循环。',
+              '免费聚合多个开放音频库，优先帮你筛出更长、更适合循环的环境音。默认不需要 Key，搜索到结果后就能直接试听和使用。',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 height: 1.45,
@@ -786,26 +767,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             const SizedBox(height: 14),
             TextField(
-              controller: _freesoundApiKeyController,
-              decoration: InputDecoration(
-                labelText: 'Freesound API Key',
-                hintText: '粘贴你的 Freesound Token',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.save_outlined),
-                  onPressed: _saveFreesoundApiKey,
-                ),
-              ),
-              enableSuggestions: false,
-              autocorrect: false,
-              onSubmitted: (_) => _saveFreesoundApiKey(),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _freesoundQueryController,
+              controller: _openverseQueryController,
               decoration: InputDecoration(
                 labelText: '搜索关键词',
-                hintText: '例如 rain ambience / forest night / cafe ambience',
-                suffixIcon: _isSearchingFreesound
+                hintText:
+                    '例如 rain ambience / forest ambience / ocean waves / cafe ambience',
+                suffixIcon: _isSearchingOpenverse
                     ? const Padding(
                         padding: EdgeInsets.all(12),
                         child: SizedBox(
@@ -816,11 +783,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       )
                     : IconButton(
                         icon: const Icon(Icons.search_rounded),
-                        onPressed: _searchFreesound,
+                        onPressed: _searchOpenverseAudio,
                       ),
               ),
               textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _searchFreesound(),
+              onSubmitted: (_) => _searchOpenverseAudio(),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -831,148 +798,71 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   'rain ambience',
                   'forest ambience',
                   'ocean waves',
-                  'coffee shop ambience',
-                  'lofi study',
+                  'cafe ambience',
+                  'fireplace ambience',
+                  'night ambience',
                 ])
                   ActionChip(
                     label: Text(suggestion),
                     onPressed: () {
                       setState(() {
-                        _freesoundQueryController.text = suggestion;
+                        _openverseQueryController.text = suggestion;
                       });
                     },
                   ),
               ],
             ),
-            if (_freesoundStatus != null) ...[
+            if (_openverseStatus != null) ...[
               const SizedBox(height: 12),
               Text(
-                _freesoundStatus!,
+                _openverseStatus!,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.primary,
                 ),
               ),
             ],
-            if (_freesoundResults.isNotEmpty) ...[
+            if (_openverseResults.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
-                '可选结果',
+                '免费可选结果',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 6),
-              for (final result in _freesoundResults)
+              for (final result in _openverseResults)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
-                    selectedExternal?.id == 'freesound_${result.id}'
+                    selectedExternal?.id == 'openverse_${result.id}'
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked_rounded,
-                    color: selectedExternal?.id == 'freesound_${result.id}'
+                    color: selectedExternal?.id == 'openverse_${result.id}'
                         ? theme.colorScheme.primary
                         : theme.colorScheme.onSurfaceVariant,
                   ),
-                  title: Text(
-                    result.name.isEmpty
-                        ? 'Freesound ${result.id}'
-                        : result.name,
-                  ),
+                  title: Text(result.title),
                   subtitle: Text(
-                    '原音频时长 ${_formatDurationLabel(result.duration)} · ${result.username}',
+                    [
+                      if (result.provider.isNotEmpty) result.provider,
+                      if (result.durationSeconds != null)
+                        _formatDurationLabel(result.durationSeconds!),
+                      if (result.creator.isNotEmpty) result.creator,
+                      result.license,
+                    ].join(' · '),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.play_circle_outline_rounded),
                     onPressed: () async {
-                      await _previewFreesoundResult(result, storage);
+                      await _previewOpenverseResult(result, storage);
                     },
                   ),
                   onTap: () async {
-                    await _selectFreesoundResult(result, storage, isFocusing);
+                    await _selectOpenverseResult(result, storage, isFocusing);
                   },
                 ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSoundscapePanel(
-    StorageService storage,
-    ThemeData theme,
-    bool isFocusing,
-  ) {
-    final selectedExternal = _currentExternalForSource(
-      storage,
-      sourceType: FocusSoundSourceType.soundscape,
-    );
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Soundscape City',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '更适合整段专注时长的连续环境流。配置 API Key 后，可以直接按场景切换并实时试听。',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _soundscapeApiKeyController,
-              decoration: InputDecoration(
-                labelText: 'Soundscape API Key',
-                hintText: '粘贴你的 Soundscape City Key',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.save_outlined),
-                  onPressed: _saveSoundscapeApiKey,
-                ),
-              ),
-              enableSuggestions: false,
-              autocorrect: false,
-              onSubmitted: (_) => _saveSoundscapeApiKey(),
-            ),
-            if (_soundscapeStatus != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _soundscapeStatus!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: ambientScenes.map((scene) {
-                final isSelected =
-                    selectedExternal?.id == 'soundscape_${scene.id}';
-                return ChoiceChip(
-                  avatar: Text(scene.icon),
-                  label: Text(scene.name),
-                  selected: isSelected,
-                  onSelected: (_) async {
-                    await _selectSoundscapeScene(scene, storage, isFocusing);
-                  },
-                );
-              }).toList(),
-            ),
-            if (_isLoadingSoundscape) ...[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(),
             ],
           ],
         ),
@@ -1061,117 +951,75 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
-  Future<void> _saveFreesoundApiKey() async {
-    final key = _freesoundApiKeyController.text.trim();
-    await ref.read(storageServiceProvider).setFreesoundApiKey(key);
-    ref.read(soundApiServiceProvider).setFreesoundApiKey(key);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _freesoundStatus = key.isEmpty
-          ? '已清空 Freesound API Key'
-          : 'Freesound API Key 已保存';
-    });
-  }
-
-  Future<void> _saveSoundscapeApiKey() async {
-    final key = _soundscapeApiKeyController.text.trim();
-    await ref.read(storageServiceProvider).setSoundscapeApiKey(key);
-    ref.read(soundApiServiceProvider).setSoundscapeApiKey(key);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _soundscapeStatus = key.isEmpty
-          ? '已清空 Soundscape API Key'
-          : 'Soundscape API Key 已保存';
-    });
-  }
-
-  Future<void> _searchFreesound() async {
-    final query = _freesoundQueryController.text.trim();
-    final apiKey = _freesoundApiKeyController.text.trim();
-
-    if (apiKey.isEmpty) {
-      setState(() {
-        _freesoundStatus = '先填写并保存 Freesound API Key，再搜索更多背景音。';
-      });
-      return;
-    }
-
+  Future<void> _searchOpenverseAudio() async {
+    final query = _openverseQueryController.text.trim();
     if (query.isEmpty) {
       setState(() {
-        _freesoundStatus = '先输入关键词，再开始搜索。';
+        _openverseStatus = '先输入关键词，再开始搜索。';
       });
       return;
     }
 
-    final soundApi = ref.read(soundApiServiceProvider);
-    soundApi.setFreesoundApiKey(apiKey);
-
     setState(() {
-      _isSearchingFreesound = true;
-      _freesoundStatus = '正在搜索较长的环境音素材...';
+      _isSearchingOpenverse = true;
+      _openverseStatus = '正在聚合免费的长音频结果...';
     });
 
-    final results = await soundApi.searchFreesound(
-      query: query,
-      pageSize: 12,
-      minDuration: 180,
-    );
-    results.sort((left, right) => right.duration.compareTo(left.duration));
+    final results = await ref
+        .read(soundApiServiceProvider)
+        .searchOpenverseAudio(query: query, limit: 12, minDurationSeconds: 45);
 
     if (!mounted) {
       return;
     }
 
     setState(() {
-      _isSearchingFreesound = false;
-      _freesoundResults = results;
-      _freesoundStatus = results.isEmpty
-          ? '没有找到合适结果，试试 rain ambience、forest ambience 或 coffee shop ambience。'
-          : '找到 ${results.length} 条可试听结果，点选即可设为当前背景音。';
+      _isSearchingOpenverse = false;
+      _openverseResults = results;
+      _openverseStatus = results.isEmpty
+          ? '没有找到合适结果，试试 rain ambience、forest ambience、ocean waves 或 cafe ambience。'
+          : '找到 ${results.length} 条免费结果，已经优先排到更长、更适合循环的音频。';
     });
   }
 
-  Future<void> _previewFreesoundResult(
-    FreesoundResult result,
+  Future<void> _previewOpenverseResult(
+    OpenverseAudioResult result,
     StorageService storage,
   ) async {
     await ref
         .read(audioServiceProvider)
-        .playAmbientUrl(result.previewUrl, volume: storage.focusSoundVolume);
+        .playAmbientUrl(result.fileUrl, volume: storage.focusSoundVolume);
     if (!mounted) {
       return;
     }
     setState(() {
-      _freesoundStatus =
-          '正在试听 ${result.name.isEmpty ? 'Freesound ${result.id}' : result.name}';
+      _openverseStatus = '正在试听 ${result.title}';
     });
   }
 
-  Future<void> _selectFreesoundResult(
-    FreesoundResult result,
+  Future<void> _selectOpenverseResult(
+    OpenverseAudioResult result,
     StorageService storage,
     bool isFocusing,
   ) async {
     _markPresetCustom(storage);
-    final displayName = result.name.isEmpty
-        ? 'Freesound ${result.id}'
-        : result.name;
     final selectedSound = FocusExternalSound(
-      sourceType: FocusSoundSourceType.freesound,
-      id: 'freesound_${result.id}',
-      name: displayName,
-      description:
-          'Freesound · 原音频时长 ${_formatDurationLabel(result.duration)} · ${result.username}',
-      streamUrl: result.previewUrl,
-      author: result.username,
-      durationSeconds: result.duration,
-      apiParam: _freesoundQueryController.text.trim().isEmpty
+      sourceType: FocusSoundSourceType.openverse,
+      id: 'openverse_${result.id}',
+      name: result.title,
+      description: [
+        'Openverse',
+        if (result.provider.isNotEmpty) result.provider,
+        if (result.durationSeconds != null)
+          '时长 ${_formatDurationLabel(result.durationSeconds!)}',
+        result.license,
+      ].join(' · '),
+      streamUrl: result.fileUrl,
+      author: result.creator.isEmpty ? 'Openverse' : result.creator,
+      durationSeconds: result.durationSeconds,
+      apiParam: _openverseQueryController.text.trim().isEmpty
           ? null
-          : _freesoundQueryController.text.trim(),
+          : _openverseQueryController.text.trim(),
     );
 
     await storage.setSelectedExternalFocusSound(selectedSound);
@@ -1179,138 +1027,52 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ref.read(timerProvider.notifier).syncCurrentFocusSoundFromSettings();
 
     if (!isFocusing) {
-      await _previewFreesoundResult(result, storage);
+      await _previewOpenverseResult(result, storage);
     }
 
     if (!mounted) {
       return;
     }
     setState(() {
-      _freesoundStatus = '已选择 $displayName';
+      _openverseStatus = '已选择 ${result.title}';
     });
-  }
-
-  Future<void> _selectSoundscapeScene(
-    AmbientScene scene,
-    StorageService storage,
-    bool isFocusing,
-  ) async {
-    _markPresetCustom(storage);
-    final selectedSound = FocusExternalSound(
-      sourceType: FocusSoundSourceType.soundscape,
-      id: 'soundscape_${scene.id}',
-      name: scene.name,
-      description: 'Soundscape City · 连续环境流',
-      author: 'Soundscape City',
-      apiParam: scene.apiParam,
-    );
-
-    await storage.setSelectedExternalFocusSound(selectedSound);
-    await storage.setRandomFocusSoundMode(false);
-    ref.read(timerProvider.notifier).syncCurrentFocusSoundFromSettings();
-
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _soundscapeStatus = '已选择 ${scene.name}';
-    });
-
-    if (!isFocusing) {
-      await _previewExternalFocusSound(selectedSound, storage);
-    }
   }
 
   Future<void> _previewExternalFocusSound(
     FocusExternalSound external,
     StorageService storage,
   ) async {
-    final soundApi = ref.read(soundApiServiceProvider);
-    soundApi.configure(
-      freesoundApiKey: storage.freesoundApiKey,
-      soundscapeApiKey: storage.soundscapeApiKey,
-    );
+    if (external.sourceType == FocusSoundSourceType.builtIn) {
+      return;
+    }
 
-    if (external.sourceType == FocusSoundSourceType.wikimedia ||
-        external.sourceType == FocusSoundSourceType.freesound) {
-      if (external.streamUrl == null || external.streamUrl!.isEmpty) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          if (external.sourceType == FocusSoundSourceType.wikimedia) {
-            _wikimediaStatus = '这条 Wikimedia 结果没有可用播放地址。';
-          } else {
-            _freesoundStatus = '这条 Freesound 结果没有可用预览流。';
-          }
-        });
-        return;
-      }
-
-      await ref
-          .read(audioServiceProvider)
-          .playAmbientUrl(
-            external.streamUrl!,
-            volume: storage.focusSoundVolume,
-          );
+    if (external.streamUrl == null || external.streamUrl!.isEmpty) {
       if (!mounted) {
         return;
       }
       setState(() {
         if (external.sourceType == FocusSoundSourceType.wikimedia) {
-          _wikimediaStatus = '正在试听 ${external.name}';
+          _wikimediaStatus = '这条 Wikimedia 结果没有可用播放地址。';
         } else {
-          _freesoundStatus = '正在试听 ${external.name}';
+          _openverseStatus = '这条 Openverse 结果没有可用播放地址。';
         }
-      });
-      return;
-    }
-
-    if (external.sourceType != FocusSoundSourceType.soundscape) {
-      return;
-    }
-
-    if (storage.soundscapeApiKey.isEmpty) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _soundscapeStatus = '已选择场景，但需要先保存 Soundscape API Key 才能播放。';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoadingSoundscape = true;
-      _soundscapeStatus = '正在连接 ${external.name}...';
-    });
-
-    final url = await soundApi.getSoundscapeUrl(
-      environment: external.apiParam ?? external.id,
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    if (url == null || url.isEmpty) {
-      setState(() {
-        _isLoadingSoundscape = false;
-        _soundscapeStatus = '没有拿到可播放地址，请稍后再试。';
       });
       return;
     }
 
     await ref
         .read(audioServiceProvider)
-        .playAmbientUrl(url, volume: storage.focusSoundVolume);
+        .playAmbientUrl(external.streamUrl!, volume: storage.focusSoundVolume);
 
     if (!mounted) {
       return;
     }
     setState(() {
-      _isLoadingSoundscape = false;
-      _soundscapeStatus = '正在试听 ${external.name}';
+      if (external.sourceType == FocusSoundSourceType.wikimedia) {
+        _wikimediaStatus = '正在试听 ${external.name}';
+      } else {
+        _openverseStatus = '正在试听 ${external.name}';
+      }
     });
   }
 
@@ -1319,6 +1081,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     FocusSoundSourceType? sourceType,
   }) {
     final currentSource = sourceType ?? storage.focusSoundSourceType;
+    if (currentSource == FocusSoundSourceType.builtIn) {
+      return null;
+    }
     final external = storage.selectedExternalFocusSound;
     if (external == null || external.sourceType != currentSource) {
       return null;
@@ -1356,10 +1121,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return '内置长循环';
       case FocusSoundSourceType.wikimedia:
         return 'Wikimedia Commons';
-      case FocusSoundSourceType.freesound:
-        return 'Freesound API';
-      case FocusSoundSourceType.soundscape:
-        return 'Soundscape City';
+      case FocusSoundSourceType.openverse:
+        return 'Openverse';
     }
   }
 

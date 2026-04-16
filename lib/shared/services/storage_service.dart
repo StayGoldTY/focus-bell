@@ -118,9 +118,13 @@ class StorageService {
     }
 
     try {
-      return FocusExternalSound.fromJson(
-        Map<String, dynamic>.from(jsonDecode(raw) as Map),
-      );
+      final json = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      final rawSource = json['sourceType'] as String?;
+      if (rawSource != FocusSoundSourceType.wikimedia.name &&
+          rawSource != FocusSoundSourceType.openverse.name) {
+        return null;
+      }
+      return FocusExternalSound.fromJson(json);
     } catch (_) {
       return null;
     }

@@ -9,7 +9,6 @@ import '../../../core/constants/sound_data.dart';
 import '../../../core/models/focus_external_sound.dart';
 import '../../../core/models/focus_session_record.dart';
 import '../../../shared/services/audio_service.dart';
-import '../../../shared/services/sound_api_service.dart';
 import '../../../shared/services/storage_service.dart';
 import '../models/timer_state.dart';
 import 'focus_session_draft_provider.dart';
@@ -25,7 +24,6 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   final Ref _ref;
   final StorageService _storage;
   final AudioService _audio;
-  final SoundApiService _soundApi;
   final _random = Random();
   Timer? _ticker;
   String? _activeFocusSoundId;
@@ -40,7 +38,6 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   TimerNotifier(this._ref)
     : _storage = _ref.read(storageServiceProvider),
       _audio = _ref.read(audioServiceProvider),
-      _soundApi = _ref.read(soundApiServiceProvider),
       super(const FocusTimerState()) {
     WidgetsBinding.instance.addObserver(this);
     _loadTodayStats();
@@ -460,11 +457,6 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   Future<void> _playExternalFocusSound(FocusExternalSound external) async {
-    _soundApi.configure(
-      freesoundApiKey: _storage.freesoundApiKey,
-      soundscapeApiKey: _storage.soundscapeApiKey,
-    );
-
     String? url;
     switch (external.sourceType) {
       case FocusSoundSourceType.builtIn:
@@ -472,15 +464,8 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       case FocusSoundSourceType.wikimedia:
         url = external.streamUrl;
         break;
-      case FocusSoundSourceType.freesound:
+      case FocusSoundSourceType.openverse:
         url = external.streamUrl;
-        break;
-      case FocusSoundSourceType.soundscape:
-        final environment = external.apiParam ?? external.id;
-        if (environment.isEmpty) {
-          return;
-        }
-        url = await _soundApi.getSoundscapeUrl(environment: environment);
         break;
     }
 

@@ -31,8 +31,7 @@ class AppConstants {
   static const Duration fadeOutDuration = Duration(milliseconds: 500);
   static const Duration pulseAnimationDuration = Duration(milliseconds: 2000);
 
-  static const String freesoundBaseUrl = 'https://freesound.org/apiv2';
-  static const String soundscapeCityBaseUrl = 'https://api.soundscape.city/v1';
   static const String wikimediaCommonsApiUrl =
       'https://commons.wikimedia.org/w/api.php';
+  static const String openverseApiUrl = 'https://api.openverse.org/v1/audio/';
 }

@@ -7,34 +7,69 @@ final soundApiServiceProvider = Provider<SoundApiService>((ref) {
   return SoundApiService();
 });
 
-class FreesoundResult {
-  final int id;
-  final String name;
-  final String previewUrl;
-  final double duration;
-  final String username;
+const _supportedWikimediaMimes = {
+  'audio/flac',
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/wav',
+  'audio/webm',
+};
 
-  FreesoundResult({
-    required this.id,
-    required this.name,
-    required this.previewUrl,
-    required this.duration,
-    required this.username,
-  });
+const _supportedOpenverseFileTypes = {
+  'aac',
+  'flac',
+  'm4a',
+  'mp3',
+  'ogg',
+  'opus',
+  'wav',
+  'webm',
+};
 
-  factory FreesoundResult.fromJson(Map<String, dynamic> json) {
-    final previews = json['previews'] as Map<String, dynamic>? ?? {};
-    return FreesoundResult(
-      id: json['id'] as int,
-      name: json['name'] as String? ?? '',
-      previewUrl:
-          (previews['preview-lq-mp3'] ?? previews['preview-hq-mp3'] ?? '')
-              as String,
-      duration: (json['duration'] as num?)?.toDouble() ?? 0,
-      username: json['username'] as String? ?? '',
-    );
-  }
-}
+const _ambientKeywordHints = {
+  'ambient',
+  'ambience',
+  'ambiance',
+  'background',
+  'cafe',
+  'coffee',
+  'fireplace',
+  'forest',
+  'nature',
+  'night',
+  'noise',
+  'ocean',
+  'rain',
+  'river',
+  'sea',
+  'soundscape',
+  'stream',
+  'waves',
+  'white noise',
+};
+
+const _ambientFirstProviders = {'freesound', 'wikimedia'};
+const _musicFirstProviders = {'ccmixter', 'jamendo'};
+const _musicQueryKeywords = {
+  'classical',
+  'guitar',
+  'jazz',
+  'lo-fi',
+  'lofi',
+  'music',
+  'piano',
+  'song',
+  'study beat',
+};
+const _queryStopWords = {
+  'ambient',
+  'ambiance',
+  'ambience',
+  'audio',
+  'background',
+  'sound',
+  'soundscape',
+};
 
 class WikimediaAudioResult {
   final int pageId;
@@ -81,7 +116,7 @@ class WikimediaAudioResult {
 
     return WikimediaAudioResult(
       pageId: json['pageid'] as int? ?? 0,
-      title: displayTitle,
+      title: displayTitle.trim().isEmpty ? 'Untitled audio' : displayTitle,
       fileUrl: imageInfo['url'] as String? ?? '',
       descriptionUrl: imageInfo['descriptionurl'] as String? ?? '',
       mime: imageInfo['mime'] as String? ?? '',
@@ -104,60 +139,103 @@ class WikimediaAudioResult {
   }
 }
 
+class OpenverseAudioResult {
+  final String id;
+  final String title;
+  final String fileUrl;
+  final String creator;
+  final String provider;
+  final String license;
+  final String detailUrl;
+  final String fileType;
+  final List<String> tags;
+  final double? durationSeconds;
+
+  const OpenverseAudioResult({
+    required this.id,
+    required this.title,
+    required this.fileUrl,
+    required this.creator,
+    required this.provider,
+    required this.license,
+    required this.detailUrl,
+    required this.fileType,
+    required this.tags,
+    required this.durationSeconds,
+  });
+
+  factory OpenverseAudioResult.fromJson(Map<String, dynamic> json) {
+    final title = (json['title'] as String? ?? '').trim();
+    final provider =
+        (json['provider'] as String? ?? json['source'] as String? ?? '').trim();
+    final fileType = (json['filetype'] as String? ?? '').trim().toLowerCase();
+    final rawTags = json['tags'] as List? ?? const [];
+    return OpenverseAudioResult(
+      id: (json['id'] ?? '').toString(),
+      title: title.isEmpty ? 'Untitled audio' : title,
+      fileUrl: (json['url'] as String? ?? '').trim(),
+      creator: (json['creator'] as String? ?? '').trim(),
+      provider: provider,
+      license: _buildLicenseLabel(
+        json['license'] as String?,
+        json['license_version'] as String?,
+      ),
+      detailUrl:
+          (json['foreign_landing_url'] as String? ??
+                  json['detail_url'] as String? ??
+                  '')
+              .trim(),
+      fileType: fileType,
+      tags: rawTags
+          .map((tag) {
+            if (tag is Map<String, dynamic>) {
+              return (tag['name'] as String? ?? '').trim();
+            }
+            return tag is String ? tag.trim() : '';
+          })
+          .where((tag) => tag.isNotEmpty)
+          .toList(),
+      durationSeconds: _parseDurationSeconds(json['duration']),
+    );
+  }
+
+  static String _buildLicenseLabel(String? license, String? version) {
+    final normalizedLicense = (license ?? '').trim();
+    final normalizedVersion = (version ?? '').trim();
+    if (normalizedLicense.isEmpty) {
+      return 'Open license';
+    }
+
+    final prefix = normalizedLicense.toLowerCase().startsWith('cc')
+        ? normalizedLicense.toUpperCase()
+        : 'CC ${normalizedLicense.toUpperCase()}';
+    return normalizedVersion.isEmpty ? prefix : '$prefix $normalizedVersion';
+  }
+
+  static double? _parseDurationSeconds(Object? rawDuration) {
+    if (rawDuration is! num) {
+      return null;
+    }
+
+    final value = rawDuration.toDouble();
+    if (value <= 0) {
+      return null;
+    }
+
+    return value > 1000 ? value / 1000 : value;
+  }
+}
+
 class SoundApiService {
   SoundApiService() {
-    _dio.options.headers['User-Agent'] =
-        'FocusBell/1.0 (https://github.com/StayGoldTY/focus-bell)';
+    _dio.options
+      ..connectTimeout = const Duration(seconds: 20)
+      ..receiveTimeout = const Duration(seconds: 20)
+      ..headers['User-Agent'] =
+          'FocusBell/1.0 (https://github.com/StayGoldTY/focus-bell)';
   }
 
   final Dio _dio = Dio();
-
-  String? _freesoundApiKey;
-  String? _soundscapeApiKey;
-
-  void configure({String? freesoundApiKey, String? soundscapeApiKey}) {
-    _freesoundApiKey = freesoundApiKey?.trim();
-    _soundscapeApiKey = soundscapeApiKey?.trim();
-  }
-
-  void setFreesoundApiKey(String key) => _freesoundApiKey = key.trim();
-
-  void setSoundscapeApiKey(String key) => _soundscapeApiKey = key.trim();
-
-  Future<List<FreesoundResult>> searchFreesound({
-    required String query,
-    int pageSize = 15,
-    double minDuration = 0.0,
-    double? maxDuration,
-  }) async {
-    if (_freesoundApiKey == null || _freesoundApiKey!.isEmpty) {
-      return [];
-    }
-
-    try {
-      final durationFilter = maxDuration == null
-          ? 'duration:[$minDuration TO *]'
-          : 'duration:[$minDuration TO $maxDuration]';
-      final response = await _dio.get(
-        '${AppConstants.freesoundBaseUrl}/search/text/',
-        queryParameters: {
-          'query': query,
-          'filter': durationFilter,
-          'fields': 'id,name,previews,duration,username',
-          'page_size': pageSize,
-          'token': _freesoundApiKey,
-        },
-      );
-
-      final results = response.data['results'] as List? ?? [];
-      return results
-          .map((e) => FreesoundResult.fromJson(e as Map<String, dynamic>))
-          .where((item) => item.previewUrl.isNotEmpty)
-          .toList();
-    } catch (_) {
-      return [];
-    }
-  }
 
   Future<List<WikimediaAudioResult>> searchWikimediaAudio({
     required String query,
@@ -184,22 +262,18 @@ class SoundApiService {
         },
       );
 
+      final data = response.data;
+      if (data is! Map) {
+        return [];
+      }
+
       final pages =
-          (response.data['query']?['pages'] as Map?)?.values.toList() ??
-          const [];
+          (data['query']?['pages'] as Map?)?.values.toList() ?? const [];
       pages.sort(
         (left, right) => ((left as Map)['index'] as int? ?? 0).compareTo(
           (right as Map)['index'] as int? ?? 0,
         ),
       );
-
-      const supportedMimes = {
-        'audio/mpeg',
-        'audio/ogg',
-        'audio/wav',
-        'audio/flac',
-        'audio/webm',
-      };
 
       return pages
           .map(
@@ -210,7 +284,7 @@ class SoundApiService {
             (item) =>
                 item.fileUrl.isNotEmpty &&
                 item.mime.isNotEmpty &&
-                supportedMimes.contains(item.mime),
+                _supportedWikimediaMimes.contains(item.mime),
           )
           .toList();
     } catch (_) {
@@ -218,22 +292,152 @@ class SoundApiService {
     }
   }
 
-  Future<String?> getSoundscapeUrl({required String environment}) async {
-    if (_soundscapeApiKey == null || _soundscapeApiKey!.isEmpty) {
-      return null;
+  Future<List<OpenverseAudioResult>> searchOpenverseAudio({
+    required String query,
+    int limit = 12,
+    double minDurationSeconds = 45,
+  }) async {
+    final trimmedQuery = query.trim();
+    if (trimmedQuery.isEmpty) {
+      return [];
     }
 
     try {
       final response = await _dio.get(
-        '${AppConstants.soundscapeCityBaseUrl}/environment',
-        queryParameters: {'env': environment},
-        options: Options(headers: {'x-api-key': _soundscapeApiKey}),
+        AppConstants.openverseApiUrl,
+        queryParameters: {
+          'q': _normalizeOpenverseQuery(trimmedQuery),
+          'mature': false,
+          'page_size': limit * 4,
+        },
       );
 
-      return response.data['url'] as String?;
+      final data = response.data;
+      if (data is! Map) {
+        return [];
+      }
+
+      final preferAmbientProviders = _shouldPreferAmbientProviders(
+        trimmedQuery,
+      );
+      final results = (data['results'] as List? ?? const [])
+          .map(
+            (item) =>
+                OpenverseAudioResult.fromJson(item as Map<String, dynamic>),
+          )
+          .where(_isPlayableOpenverseResult)
+          .where(
+            (item) =>
+                item.durationSeconds == null ||
+                item.durationSeconds! >= minDurationSeconds,
+          )
+          .where(
+            (item) =>
+                !preferAmbientProviders ||
+                !_musicFirstProviders.contains(item.provider.toLowerCase()),
+          )
+          .toList();
+
+      results.sort((left, right) {
+        final scoreCompare = _scoreOpenverseResult(
+          right,
+          trimmedQuery,
+        ).compareTo(_scoreOpenverseResult(left, trimmedQuery));
+        if (scoreCompare != 0) {
+          return scoreCompare;
+        }
+
+        final durationCompare = (right.durationSeconds ?? 0).compareTo(
+          left.durationSeconds ?? 0,
+        );
+        if (durationCompare != 0) {
+          return durationCompare;
+        }
+
+        return left.title.compareTo(right.title);
+      });
+
+      return results.take(limit).toList();
     } catch (_) {
-      return null;
+      return [];
     }
+  }
+
+  bool _isPlayableOpenverseResult(OpenverseAudioResult item) {
+    return item.fileUrl.isNotEmpty &&
+        item.fileType.isNotEmpty &&
+        _supportedOpenverseFileTypes.contains(item.fileType);
+  }
+
+  int _scoreOpenverseResult(OpenverseAudioResult item, String query) {
+    var score = 0;
+    final searchableText = [
+      item.title,
+      item.creator,
+      item.provider,
+      ...item.tags,
+    ].join(' ').toLowerCase();
+
+    for (final token in _tokenizeQuery(query)) {
+      if (searchableText.contains(token)) {
+        score += 3;
+      }
+    }
+
+    for (final hint in _ambientKeywordHints) {
+      if (searchableText.contains(hint)) {
+        score += 2;
+      }
+    }
+
+    final provider = item.provider.toLowerCase();
+    if (_ambientFirstProviders.contains(provider)) {
+      score += 3;
+    }
+
+    final duration = item.durationSeconds ?? 0;
+    if (duration >= 600) {
+      score += 6;
+    } else if (duration >= 180) {
+      score += 5;
+    } else if (duration >= 60) {
+      score += 3;
+    }
+
+    if (item.fileType == 'mp3' || item.fileType == 'ogg') {
+      score += 1;
+    }
+
+    return score;
+  }
+
+  String _normalizeOpenverseQuery(String query) {
+    final lower = query.toLowerCase();
+    if (_looksLikeMusicQuery(lower) || _hasAmbientHint(lower)) {
+      return query;
+    }
+    return '$query ambience';
+  }
+
+  bool _shouldPreferAmbientProviders(String query) {
+    return !_looksLikeMusicQuery(query.toLowerCase());
+  }
+
+  bool _looksLikeMusicQuery(String query) {
+    return _musicQueryKeywords.any(query.contains);
+  }
+
+  bool _hasAmbientHint(String query) {
+    return _ambientKeywordHints.any(query.contains);
+  }
+
+  Iterable<String> _tokenizeQuery(String query) {
+    return query
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where(
+          (token) => token.length >= 2 && !_queryStopWords.contains(token),
+        );
   }
 
   void dispose() {
