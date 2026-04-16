@@ -1,4 +1,4 @@
-enum FocusSoundSourceType { builtIn, freesound, soundscape }
+enum FocusSoundSourceType { builtIn, wikimedia, freesound, soundscape }
 
 FocusSoundSourceType parseFocusSoundSourceType(String? raw) {
   return FocusSoundSourceType.values.firstWhere(

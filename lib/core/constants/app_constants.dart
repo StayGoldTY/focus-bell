@@ -33,4 +33,6 @@ class AppConstants {
 
   static const String freesoundBaseUrl = 'https://freesound.org/apiv2';
   static const String soundscapeCityBaseUrl = 'https://api.soundscape.city/v1';
+  static const String wikimediaCommonsApiUrl =
+      'https://commons.wikimedia.org/w/api.php';
 }

@@ -28,14 +28,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       TextEditingController();
   final TextEditingController _soundscapeApiKeyController =
       TextEditingController();
+  final TextEditingController _wikimediaQueryController = TextEditingController(
+    text: 'rain',
+  );
   final TextEditingController _freesoundQueryController = TextEditingController(
     text: 'rain ambience',
   );
 
   bool _focusPresetExpanded = false;
+  bool _isSearchingWikimedia = false;
   bool _isSearchingFreesound = false;
   bool _isLoadingSoundscape = false;
+  List<WikimediaAudioResult> _wikimediaResults = const [];
   List<FreesoundResult> _freesoundResults = const [];
+  String? _wikimediaStatus;
   String? _freesoundStatus;
   String? _soundscapeStatus;
 
@@ -52,6 +58,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _focusPresetController.dispose();
     _freesoundApiKeyController.dispose();
     _soundscapeApiKeyController.dispose();
+    _wikimediaQueryController.dispose();
     _freesoundQueryController.dispose();
     super.dispose();
   }
@@ -419,38 +426,55 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             const SizedBox(height: 14),
-            SegmentedButton<FocusSoundSourceType>(
-              segments: const [
-                ButtonSegment(
-                  value: FocusSoundSourceType.builtIn,
-                  icon: Icon(Icons.offline_bolt_rounded),
-                  label: Text('内置'),
-                ),
-                ButtonSegment(
-                  value: FocusSoundSourceType.freesound,
-                  icon: Icon(Icons.travel_explore_rounded),
-                  label: Text('Freesound'),
-                ),
-                ButtonSegment(
-                  value: FocusSoundSourceType.soundscape,
-                  icon: Icon(Icons.waves_rounded),
-                  label: Text('Soundscape'),
-                ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final option in const [
+                  (
+                    FocusSoundSourceType.builtIn,
+                    '内置',
+                    Icons.offline_bolt_rounded,
+                  ),
+                  (
+                    FocusSoundSourceType.wikimedia,
+                    'Wiki免费',
+                    Icons.public_rounded,
+                  ),
+                  (
+                    FocusSoundSourceType.freesound,
+                    'Freesound',
+                    Icons.travel_explore_rounded,
+                  ),
+                  (
+                    FocusSoundSourceType.soundscape,
+                    'Soundscape',
+                    Icons.waves_rounded,
+                  ),
+                ])
+                  ChoiceChip(
+                    avatar: Icon(
+                      option.$3,
+                      size: 18,
+                      color: currentSource == option.$1
+                          ? theme.colorScheme.onPrimary
+                          : theme.colorScheme.primary,
+                    ),
+                    label: Text(option.$2),
+                    selected: currentSource == option.$1,
+                    onSelected: (_) async {
+                      _markPresetCustom(storage);
+                      await storage.setFocusSoundSourceType(option.$1);
+                      ref
+                          .read(timerProvider.notifier)
+                          .syncCurrentFocusSoundFromSettings();
+                      if (!mounted) {
+                        return;
+                      }
+                      setState(() {});
+                    },
+                  ),
               ],
-              selected: {currentSource},
-              showSelectedIcon: false,
-              style: const ButtonStyle(visualDensity: VisualDensity.compact),
-              onSelectionChanged: (selection) async {
-                _markPresetCustom(storage);
-                await storage.setFocusSoundSourceType(selection.first);
-                ref
-                    .read(timerProvider.notifier)
-                    .syncCurrentFocusSoundFromSettings();
-                if (!mounted) {
-                  return;
-                }
-                setState(() {});
-              },
             ),
             if (currentSource != FocusSoundSourceType.builtIn &&
                 _currentExternalForSource(storage) == null) ...[
@@ -565,12 +589,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: ListTile(
-            leading: Icon(
-              currentSource == FocusSoundSourceType.freesound
-                  ? Icons.travel_explore_rounded
-                  : Icons.waves_rounded,
-              color: theme.colorScheme.primary,
-            ),
+            leading: Icon(switch (currentSource) {
+              FocusSoundSourceType.wikimedia => Icons.public_rounded,
+              FocusSoundSourceType.freesound => Icons.travel_explore_rounded,
+              FocusSoundSourceType.soundscape => Icons.waves_rounded,
+              FocusSoundSourceType.builtIn => Icons.graphic_eq_rounded,
+            }, color: theme.colorScheme.primary),
             title: Text(_providerLabel(currentSource)),
             subtitle: Text(
               selectedExternal == null
@@ -591,11 +615,141 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
           ),
         ),
-        if (currentSource == FocusSoundSourceType.freesound)
+        if (currentSource == FocusSoundSourceType.wikimedia)
+          _buildWikimediaPanel(storage, theme, isFocusing)
+        else if (currentSource == FocusSoundSourceType.freesound)
           _buildFreesoundPanel(storage, theme, isFocusing)
         else if (currentSource == FocusSoundSourceType.soundscape)
           _buildSoundscapePanel(storage, theme, isFocusing),
       ],
+    );
+  }
+
+  Widget _buildWikimediaPanel(
+    StorageService storage,
+    ThemeData theme,
+    bool isFocusing,
+  ) {
+    final selectedExternal = _currentExternalForSource(
+      storage,
+      sourceType: FocusSoundSourceType.wikimedia,
+    );
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Wikimedia Commons',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '免费、免 Key，可直接搜索 Wikimedia Commons 上的开放授权音频文件。适合先快速扩充选择，再按喜欢的方向慢慢细化。',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _wikimediaQueryController,
+              decoration: InputDecoration(
+                labelText: '搜索关键词',
+                hintText: '例如 rain / forest / ocean / cafe / piano',
+                suffixIcon: _isSearchingWikimedia
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.search_rounded),
+                        onPressed: _searchWikimediaAudio,
+                      ),
+              ),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _searchWikimediaAudio(),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final suggestion in const [
+                  'rain',
+                  'forest',
+                  'ocean',
+                  'cafe',
+                  'piano',
+                ])
+                  ActionChip(
+                    label: Text(suggestion),
+                    onPressed: () {
+                      setState(() {
+                        _wikimediaQueryController.text = suggestion;
+                      });
+                    },
+                  ),
+              ],
+            ),
+            if (_wikimediaStatus != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _wikimediaStatus!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+            if (_wikimediaResults.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                '免费可选结果',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              for (final result in _wikimediaResults)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    selectedExternal?.id == 'wikimedia_${result.pageId}'
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selectedExternal?.id == 'wikimedia_${result.pageId}'
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  title: Text(result.title),
+                  subtitle: Text(
+                    '${result.license.isEmpty ? '开放授权音频' : result.license} · ${result.author.isEmpty ? 'Wikimedia Commons' : result.author}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.play_circle_outline_rounded),
+                    onPressed: () async {
+                      await _previewWikimediaResult(result, storage);
+                    },
+                  ),
+                  onTap: () async {
+                    await _selectWikimediaResult(result, storage, isFocusing);
+                  },
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -826,6 +980,87 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Future<void> _searchWikimediaAudio() async {
+    final query = _wikimediaQueryController.text.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _wikimediaStatus = '先输入关键词，再开始搜索。';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearchingWikimedia = true;
+      _wikimediaStatus = '正在搜索免费的开放授权音频...';
+    });
+
+    final results = await ref
+        .read(soundApiServiceProvider)
+        .searchWikimediaAudio(query: query, limit: 12);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isSearchingWikimedia = false;
+      _wikimediaResults = results;
+      _wikimediaStatus = results.isEmpty
+          ? '没有找到合适结果，试试 rain、forest、ocean、cafe 或 piano。'
+          : '找到 ${results.length} 条免费结果，点选即可设为当前背景音。';
+    });
+  }
+
+  Future<void> _previewWikimediaResult(
+    WikimediaAudioResult result,
+    StorageService storage,
+  ) async {
+    await ref
+        .read(audioServiceProvider)
+        .playAmbientUrl(result.fileUrl, volume: storage.focusSoundVolume);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _wikimediaStatus = '正在试听 ${result.title}';
+    });
+  }
+
+  Future<void> _selectWikimediaResult(
+    WikimediaAudioResult result,
+    StorageService storage,
+    bool isFocusing,
+  ) async {
+    _markPresetCustom(storage);
+    final selectedSound = FocusExternalSound(
+      sourceType: FocusSoundSourceType.wikimedia,
+      id: 'wikimedia_${result.pageId}',
+      name: result.title,
+      description:
+          'Wikimedia Commons · ${result.license.isEmpty ? '开放授权' : result.license} · ${result.author.isEmpty ? 'Wikimedia Commons' : result.author}',
+      streamUrl: result.fileUrl,
+      author: result.author.isEmpty ? 'Wikimedia Commons' : result.author,
+      apiParam: _wikimediaQueryController.text.trim().isEmpty
+          ? null
+          : _wikimediaQueryController.text.trim(),
+    );
+
+    await storage.setSelectedExternalFocusSound(selectedSound);
+    await storage.setRandomFocusSoundMode(false);
+    ref.read(timerProvider.notifier).syncCurrentFocusSoundFromSettings();
+
+    if (!isFocusing) {
+      await _previewWikimediaResult(result, storage);
+    }
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _wikimediaStatus = '已选择 ${result.title}';
+    });
+  }
+
   Future<void> _saveFreesoundApiKey() async {
     final key = _freesoundApiKeyController.text.trim();
     await ref.read(storageServiceProvider).setFreesoundApiKey(key);
@@ -996,13 +1231,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       soundscapeApiKey: storage.soundscapeApiKey,
     );
 
-    if (external.sourceType == FocusSoundSourceType.freesound) {
+    if (external.sourceType == FocusSoundSourceType.wikimedia ||
+        external.sourceType == FocusSoundSourceType.freesound) {
       if (external.streamUrl == null || external.streamUrl!.isEmpty) {
         if (!mounted) {
           return;
         }
         setState(() {
-          _freesoundStatus = '这条 Freesound 结果没有可用预览流。';
+          if (external.sourceType == FocusSoundSourceType.wikimedia) {
+            _wikimediaStatus = '这条 Wikimedia 结果没有可用播放地址。';
+          } else {
+            _freesoundStatus = '这条 Freesound 结果没有可用预览流。';
+          }
         });
         return;
       }
@@ -1017,7 +1257,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return;
       }
       setState(() {
-        _freesoundStatus = '正在试听 ${external.name}';
+        if (external.sourceType == FocusSoundSourceType.wikimedia) {
+          _wikimediaStatus = '正在试听 ${external.name}';
+        } else {
+          _freesoundStatus = '正在试听 ${external.name}';
+        }
       });
       return;
     }
@@ -1110,6 +1354,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     switch (sourceType) {
       case FocusSoundSourceType.builtIn:
         return '内置长循环';
+      case FocusSoundSourceType.wikimedia:
+        return 'Wikimedia Commons';
       case FocusSoundSourceType.freesound:
         return 'Freesound API';
       case FocusSoundSourceType.soundscape:

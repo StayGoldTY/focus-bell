@@ -205,11 +205,12 @@ class TimerPage extends ConsumerWidget {
     final dynamic configuredSound = sourceType == FocusSoundSourceType.builtIn
         ? findFocusSoundscapeById(storage.selectedFocusSoundId)
         : (currentExternal ??
-              _NamedChipSound(
-                sourceType == FocusSoundSourceType.freesound
-                    ? 'Freesound'
-                    : 'Soundscape',
-              ));
+              _NamedChipSound(switch (sourceType) {
+                FocusSoundSourceType.wikimedia => 'Wikimedia',
+                FocusSoundSourceType.freesound => 'Freesound',
+                FocusSoundSourceType.soundscape => 'Soundscape',
+                FocusSoundSourceType.builtIn => '内置',
+              }));
 
     final summaryItems = <_OverviewChip>[
       _OverviewChip(

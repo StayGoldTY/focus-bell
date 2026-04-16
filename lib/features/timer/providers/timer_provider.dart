@@ -469,6 +469,9 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     switch (external.sourceType) {
       case FocusSoundSourceType.builtIn:
         return;
+      case FocusSoundSourceType.wikimedia:
+        url = external.streamUrl;
+        break;
       case FocusSoundSourceType.freesound:
         url = external.streamUrl;
         break;
