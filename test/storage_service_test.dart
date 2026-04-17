@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:focus_bell/core/constants/app_constants.dart';
 import 'package:focus_bell/core/models/focus_backup_payload.dart';
+import 'package:focus_bell/core/models/focus_external_sound.dart';
 import 'package:focus_bell/core/models/focus_session_record.dart';
 import 'package:focus_bell/shared/services/storage_service.dart';
 
@@ -50,6 +51,19 @@ void main() {
         expect(targetStorage.bestStreak, 5);
       },
     );
+
+    test('falls back from removed mainland library source to built-in', () async {
+      SharedPreferences.setMockInitialValues({
+        'focusSoundSourceType': 'mainlandLibrary',
+        'selectedExternalFocusSoundJson':
+            '{"sourceType":"mainlandLibrary","id":"mainland_rain","name":"雨声","description":"legacy"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final storage = StorageService(prefs);
+
+      expect(storage.focusSoundSourceType, FocusSoundSourceType.builtIn);
+      expect(storage.selectedExternalFocusSound, isNull);
+    });
 
     test('keeps only the latest history records up to the limit', () async {
       SharedPreferences.setMockInitialValues({});

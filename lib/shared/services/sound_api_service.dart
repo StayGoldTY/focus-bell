@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -229,39 +226,6 @@ class OpenverseAudioResult {
   }
 }
 
-class MainlandLibraryAudioResult {
-  final String id;
-  final String name;
-  final String description;
-  final String category;
-  final String soundscapeId;
-  final List<String> tags;
-
-  const MainlandLibraryAudioResult({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.category,
-    required this.soundscapeId,
-    required this.tags,
-  });
-
-  factory MainlandLibraryAudioResult.fromJson(Map<String, dynamic> json) {
-    final tags = (json['tags'] as List? ?? const [])
-        .map((item) => item.toString().trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
-    return MainlandLibraryAudioResult(
-      id: (json['id'] as String? ?? '').trim(),
-      name: (json['name'] as String? ?? '').trim(),
-      description: (json['description'] as String? ?? '').trim(),
-      category: (json['category'] as String? ?? '').trim(),
-      soundscapeId: (json['soundscapeId'] as String? ?? '').trim(),
-      tags: tags,
-    );
-  }
-}
-
 class SoundApiService {
   SoundApiService() {
     _dio.options
@@ -272,112 +236,6 @@ class SoundApiService {
   }
 
   final Dio _dio = Dio();
-  List<MainlandLibraryAudioResult>? _mainlandLibraryCache;
-
-  Future<List<MainlandLibraryAudioResult>> searchMainlandLibraryAudio({
-    required String query,
-    int limit = 12,
-  }) async {
-    final library = await _loadMainlandLibraryCatalog();
-    if (library.isEmpty) {
-      return [];
-    }
-
-    final trimmedQuery = query.trim().toLowerCase();
-    final results = library.where((item) {
-      if (trimmedQuery.isEmpty) {
-        return true;
-      }
-      final haystack = [
-        item.name,
-        item.description,
-        item.category,
-        ...item.tags,
-      ].join(' ').toLowerCase();
-      return haystack.contains(trimmedQuery);
-    }).toList();
-
-    results.sort((left, right) {
-      final scoreCompare = _scoreMainlandLibraryResult(
-        right,
-        trimmedQuery,
-      ).compareTo(_scoreMainlandLibraryResult(left, trimmedQuery));
-      if (scoreCompare != 0) {
-        return scoreCompare;
-      }
-      return left.name.compareTo(right.name);
-    });
-
-    return results.take(limit).toList();
-  }
-
-  Future<List<MainlandLibraryAudioResult>> _loadMainlandLibraryCatalog() async {
-    if (_mainlandLibraryCache != null) {
-      return _mainlandLibraryCache!;
-    }
-
-    try {
-      final raw = await rootBundle.loadString(
-        AppConstants.mainlandLibraryCatalogPath,
-      );
-      final decoded = jsonDecode(raw) as List;
-      _mainlandLibraryCache = decoded
-          .map(
-            (item) => MainlandLibraryAudioResult.fromJson(
-              item as Map<String, dynamic>,
-            ),
-          )
-          .where(
-            (item) =>
-                item.id.isNotEmpty &&
-                item.name.isNotEmpty &&
-                item.soundscapeId.isNotEmpty,
-          )
-          .toList();
-      return _mainlandLibraryCache!;
-    } catch (_) {
-      _mainlandLibraryCache = const [];
-      return _mainlandLibraryCache!;
-    }
-  }
-
-  int _scoreMainlandLibraryResult(
-    MainlandLibraryAudioResult item,
-    String query,
-  ) {
-    if (query.isEmpty) {
-      return 1;
-    }
-
-    var score = 0;
-    final searchable = [
-      item.name,
-      item.description,
-      item.category,
-      ...item.tags,
-    ].join(' ').toLowerCase();
-
-    if (item.name.toLowerCase().contains(query)) {
-      score += 6;
-    }
-    if (item.category.toLowerCase().contains(query)) {
-      score += 3;
-    }
-    if (item.description.toLowerCase().contains(query)) {
-      score += 2;
-    }
-    for (final tag in item.tags) {
-      if (tag.toLowerCase().contains(query)) {
-        score += 4;
-      }
-    }
-
-    if (searchable.contains(query)) {
-      score += 1;
-    }
-
-    return score;
-  }
 
   Future<List<WikimediaAudioResult>> searchWikimediaAudio({
     required String query,
