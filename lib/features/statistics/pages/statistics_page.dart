@@ -64,6 +64,9 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     final averageMinutes = sessions > 0
         ? (totalSeconds / sessions / 60).round()
         : 0;
+    final todayVisits = storage.getTodayVisits();
+    final totalVisits = storage.totalVisits;
+    final recentDailyVisits = storage.getRecentDailyVisits();
 
     return Scaffold(
       appBar: AppBar(title: const Text('专注统计')),
@@ -175,6 +178,12 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
               ),
             ),
           ],
+          const SizedBox(height: 24),
+          _VisitStatsCard(
+            todayVisits: todayVisits,
+            totalVisits: totalVisits,
+            recentDailyVisits: recentDailyVisits,
+          ),
           const SizedBox(height: 24),
           _SectionCard(
             title: '最近专注记录',
@@ -409,6 +418,170 @@ class _DailyGoalProgressCard extends StatelessWidget {
       return '${hours}h ${minutes}m';
     }
     return '${minutes}min';
+  }
+}
+
+class _VisitStatsCard extends StatelessWidget {
+  final int todayVisits;
+  final int totalVisits;
+  final Map<String, int> recentDailyVisits;
+
+  const _VisitStatsCard({
+    required this.todayVisits,
+    required this.totalVisits,
+    required this.recentDailyVisits,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return _SectionCard(
+      title: '访问统计',
+      subtitle: '当前浏览器本地记录',
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _VisitMetric(
+                  icon: Icons.today_rounded,
+                  label: '今日访问',
+                  value: '$todayVisits',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _VisitMetric(
+                  icon: Icons.all_inclusive_rounded,
+                  label: '累计访问',
+                  value: '$totalVisits',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _VisitTrend(data: recentDailyVisits),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '近 7 天',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisitMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _VisitMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.tertiary;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisitTrend extends StatelessWidget {
+  final Map<String, int> data;
+
+  const _VisitTrend({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final entries = data.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final maxValue = entries.fold<int>(
+      1,
+      (current, entry) => math.max(current, entry.value),
+    );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: entries.map((entry) {
+        final ratio = entry.value / maxValue;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  '${entry.value}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  height: 48 * ratio.clamp(0.12, 1.0),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.tertiary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _WeeklyTrendChart._formatDayLabel(entry.key),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 }
 

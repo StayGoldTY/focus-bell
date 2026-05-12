@@ -128,6 +128,24 @@ void main() {
       expect(storage.bestStreak, 3);
       expect(storage.lastFocusDate, '2026-04-14');
     });
+
+    test('records daily and total visits', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final storage = StorageService(prefs);
+
+      await storage.recordVisit(now: DateTime(2026, 4, 14, 8));
+      await storage.recordVisit(now: DateTime(2026, 4, 14, 12));
+      await storage.recordVisit(now: DateTime(2026, 4, 15, 9));
+
+      expect(storage.totalVisits, 3);
+      expect(storage.getTodayVisits(now: DateTime(2026, 4, 14, 20)), 2);
+      expect(storage.getTodayVisits(now: DateTime(2026, 4, 15, 20)), 1);
+      expect(
+        storage.getRecentDailyVisits(days: 2, now: DateTime(2026, 4, 15)),
+        {'2026-04-14': 2, '2026-04-15': 1},
+      );
+    });
   });
 }
 

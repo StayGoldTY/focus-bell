@@ -49,6 +49,9 @@ class StorageService {
   static const _currentStreakKey = 'currentStreak';
   static const _bestStreakKey = 'bestStreak';
   static const _lastFocusDateKey = 'lastFocusDate';
+  static const _totalVisitsKey = 'totalVisits';
+  static const _dailyVisitCountsJsonKey = 'dailyVisitCountsJson';
+  static const _visitHistoryLimit = 120;
 
   final SharedPreferences _prefs;
   final Random _random = Random.secure();
@@ -261,6 +264,40 @@ class StorageService {
   Future<void> setLastFocusDate(String value) =>
       _prefs.setString(_lastFocusDateKey, value);
 
+  int get totalVisits => _prefs.getInt(_totalVisitsKey) ?? 0;
+  Future<void> setTotalVisits(int value) =>
+      _prefs.setInt(_totalVisitsKey, value);
+
+  Future<void> recordVisit({DateTime? now}) async {
+    final todayKey = focusDateKey(now ?? DateTime.now());
+    final dailyVisits = _readDailyVisitCounts();
+    dailyVisits.update(todayKey, (value) => value + 1, ifAbsent: () => 1);
+
+    await setTotalVisits(totalVisits + 1);
+    await _writeDailyVisitCounts(
+      _trimDailyCounts(dailyVisits, _visitHistoryLimit),
+    );
+  }
+
+  int getTodayVisits({DateTime? now}) {
+    final todayKey = focusDateKey(now ?? DateTime.now());
+    return _readDailyVisitCounts()[todayKey] ?? 0;
+  }
+
+  Map<String, int> getRecentDailyVisits({int days = 7, DateTime? now}) {
+    final today = _dateOnly(now ?? DateTime.now());
+    final dailyVisits = _readDailyVisitCounts();
+    final result = <String, int>{};
+
+    for (var index = days - 1; index >= 0; index--) {
+      final day = today.subtract(Duration(days: index));
+      final key = focusDateKey(day);
+      result[key] = dailyVisits[key] ?? 0;
+    }
+
+    return result;
+  }
+
   int getEffectiveCurrentStreak({DateTime? now}) {
     final stored = currentStreak;
     if (stored <= 0) {
@@ -472,6 +509,8 @@ class StorageService {
       _currentStreakKey: currentStreak,
       _bestStreakKey: bestStreak,
       _lastFocusDateKey: lastFocusDate,
+      _totalVisitsKey: totalVisits,
+      _dailyVisitCountsJsonKey: jsonEncode(_readDailyVisitCounts()),
     };
   }
 
@@ -513,6 +552,47 @@ class StorageService {
     await writeInt(_currentStreakKey, stats[_currentStreakKey]);
     await writeInt(_bestStreakKey, stats[_bestStreakKey]);
     await writeString(_lastFocusDateKey, stats[_lastFocusDateKey]);
+    await writeInt(_totalVisitsKey, stats[_totalVisitsKey]);
+    await writeString(
+      _dailyVisitCountsJsonKey,
+      stats[_dailyVisitCountsJsonKey],
+    );
+  }
+
+  Map<String, int> _readDailyVisitCounts() {
+    final raw = _prefs.getString(_dailyVisitCountsJsonKey);
+    if (raw == null || raw.isEmpty) {
+      return {};
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return {};
+      }
+
+      final result = <String, int>{};
+      for (final entry in decoded.entries) {
+        final value = entry.value;
+        if (value is int && value > 0) {
+          result[entry.key] = value;
+        }
+      }
+      return result;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _writeDailyVisitCounts(Map<String, int> dailyVisits) {
+    return _prefs.setString(_dailyVisitCountsJsonKey, jsonEncode(dailyVisits));
+  }
+
+  Map<String, int> _trimDailyCounts(Map<String, int> counts, int limit) {
+    final entries = counts.entries.where((entry) => entry.value > 0).toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final start = entries.length > limit ? entries.length - limit : 0;
+    return {for (final entry in entries.skip(start)) entry.key: entry.value};
   }
 
   int _computeBestStreak(List<String> sortedDays) {
