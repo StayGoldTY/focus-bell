@@ -6,13 +6,14 @@ import 'core/theme/app_theme.dart';
 import 'features/timer/models/timer_state.dart';
 import 'features/timer/providers/settings_provider.dart';
 import 'features/timer/providers/timer_provider.dart';
+import 'shared/widgets/focus_atmosphere.dart';
 
 class FocusBellApp extends ConsumerWidget {
   const FocusBellApp({super.key});
 
-  static const _webMaxWidth = 480.0;
-  static const _webBgLight = Color(0xFFECEAF4);
-  static const _webBgDark = Color(0xFF1C1B1F);
+  static const _webMaxWidth = 440.0;
+  static const _webBgLight = Color(0xFFE7E4F4);
+  static const _webBgDark = Color(0xFF141218);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,14 +29,17 @@ class FocusBellApp extends ConsumerWidget {
       darkTheme: AppTheme.dark(colorScheme),
       routerConfig: appRouter,
       builder: (context, child) {
-        if (child == null || !kIsWeb || _usesFullscreenShell(timerPhase)) {
-          return child ?? const SizedBox.shrink();
+        final content = FocusAtmosphere(
+          child: child ?? const SizedBox.shrink(),
+        );
+        if (!kIsWeb || _usesFullscreenShell(timerPhase)) {
+          return content;
         }
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth <= _webMaxWidth) {
-              return child;
+            if (constraints.maxWidth <= _webMaxWidth + 32) {
+              return content;
             }
 
             final mediaQuery = MediaQuery.of(context);
@@ -43,19 +47,33 @@ class FocusBellApp extends ConsumerWidget {
             final bgColor = brightness == Brightness.dark
                 ? _webBgDark
                 : _webBgLight;
+            final frameHeight = (constraints.maxHeight - 48).clamp(
+              520.0,
+              constraints.maxHeight,
+            );
 
             return ColoredBox(
               color: bgColor,
-              child: Align(
-                alignment: Alignment.topCenter,
+              child: Center(
                 child: MediaQuery(
                   data: mediaQuery.copyWith(
-                    size: Size(_webMaxWidth, mediaQuery.size.height),
+                    size: Size(_webMaxWidth, frameHeight),
                   ),
-                  child: SizedBox(
+                  child: Container(
                     width: _webMaxWidth,
-                    height: constraints.maxHeight,
-                    child: child,
+                    height: frameHeight,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.16),
+                          blurRadius: 48,
+                          offset: const Offset(0, 18),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: content,
                   ),
                 ),
               ),

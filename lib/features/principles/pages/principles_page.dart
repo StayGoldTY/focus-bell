@@ -8,6 +8,7 @@ class PrinciplesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('科学原理')),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -169,6 +170,7 @@ class _PrincipleCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color, size: 24),

@@ -11,7 +11,7 @@ class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.child});
 
   static const _navItems = [
-    (icon: Icons.timer_rounded, activeIcon: Icons.timer_rounded, label: '专注'),
+    (icon: Icons.timer_outlined, activeIcon: Icons.timer_rounded, label: '专注'),
     (
       icon: Icons.bar_chart_outlined,
       activeIcon: Icons.bar_chart_rounded,
@@ -36,32 +36,55 @@ class MainShell extends ConsumerWidget {
     final timerState = ref.watch(timerProvider);
     final currentIndex = _calculateIndex(GoRouterState.of(context).uri.path);
 
-    // 微休息全屏覆盖
     if (timerState.phase == TimerPhase.microRest) {
       return const MicroRestOverlay();
     }
 
-    // 大休息全屏覆盖
     if (timerState.phase == TimerPhase.longBreak) {
       return const LongBreakOverlay();
     }
 
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: (index) {
-          context.go(_routes[index]);
-        },
-        destinations: _navItems
-            .map(
-              (item) => NavigationDestination(
-                icon: Icon(item.icon),
-                selectedIcon: Icon(item.activeIcon),
-                label: item.label,
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: scheme.surface.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.45),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: scheme.shadow.withValues(alpha: 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
-            )
-            .toList(),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: NavigationBar(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (index) {
+                context.go(_routes[index]);
+              },
+              destinations: _navItems
+                  .map(
+                    (item) => NavigationDestination(
+                      icon: Icon(item.icon),
+                      selectedIcon: Icon(item.activeIcon),
+                      label: item.label,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
       ),
     );
   }

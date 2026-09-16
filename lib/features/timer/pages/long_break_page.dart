@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/focus_quotes.dart';
 import '../models/timer_state.dart';
 import '../providers/timer_provider.dart';
 import '../widgets/circular_timer.dart';
@@ -55,6 +56,19 @@ class LongBreakOverlay extends ConsumerWidget {
                   letterSpacing: 2,
                 ),
               ).animate().fadeIn(delay: 300.ms, duration: 600.ms),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  FocusQuotes.forDate(DateTime.now()),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                    height: 1.5,
+                  ),
+                ),
+              ).animate().fadeIn(delay: 400.ms, duration: 600.ms),
 
               const Spacer(flex: 1),
 

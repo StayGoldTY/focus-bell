@@ -40,6 +40,7 @@ class StorageService {
   static const _ambientVolumeKey = 'ambientVolume';
   static const _focusSoundVolumeKey = 'focusSoundVolume';
   static const _dailyGoalMinutesKey = 'dailyGoalMinutes';
+  static const _lastTaskCategoryIdKey = 'lastTaskCategoryId';
   static const _deviceIdKey = 'deviceId';
   static const _sessionRecordsJsonKey = 'sessionRecordsJson';
   static const _totalFocusSecondsKey = 'totalFocusSeconds';
@@ -222,6 +223,16 @@ class StorageService {
 
   Future<void> setDailyGoalMinutes(int value) =>
       _prefs.setInt(_dailyGoalMinutesKey, value);
+
+  String get lastTaskCategoryId =>
+      _prefs.getString(_lastTaskCategoryIdKey) ?? '';
+  Future<void> setLastTaskCategoryId(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return _prefs.remove(_lastTaskCategoryIdKey);
+    }
+    return _prefs.setString(_lastTaskCategoryIdKey, trimmed);
+  }
 
   String get deviceId {
     final existing = _prefs.getString(_deviceIdKey);
@@ -465,6 +476,22 @@ class StorageService {
     return result;
   }
 
+  Map<String, int> getCategoryFocusSeconds() {
+    final result = <String, int>{};
+    for (final record in getSessionRecords()) {
+      final key =
+          (record.taskCategoryId == null || record.taskCategoryId!.isEmpty)
+          ? 'other'
+          : record.taskCategoryId!;
+      result.update(
+        key,
+        (value) => value + record.actualFocusSeconds,
+        ifAbsent: () => record.actualFocusSeconds,
+      );
+    }
+    return result;
+  }
+
   Future<void> _writeSessionRecords(List<FocusSessionRecord> records) {
     final encoded = jsonEncode(
       records.map((record) => record.toJson()).toList(),
@@ -497,6 +524,7 @@ class StorageService {
       _ambientVolumeKey: ambientVolume,
       _focusSoundVolumeKey: focusSoundVolume,
       _dailyGoalMinutesKey: dailyGoalMinutes,
+      _lastTaskCategoryIdKey: lastTaskCategoryId,
     };
   }
 

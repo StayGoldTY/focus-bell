@@ -18,8 +18,8 @@ const List<AppColorScheme> appColorSchemes = [
   AppColorScheme(
     id: 'deep_blue',
     name: '深海蓝',
-    primary: Color(0xFF1A237E),
-    accent: Color(0xFFFFD54F),
+    primary: Color(0xFF3F51B5),
+    accent: Color(0xFFFFC107),
   ),
   AppColorScheme(
     id: 'forest_green',
@@ -36,19 +36,19 @@ const List<AppColorScheme> appColorSchemes = [
   AppColorScheme(
     id: 'lavender',
     name: '薰衣草紫',
-    primary: Color(0xFF6A1B9A),
-    accent: Color(0xFFCE93D8),
+    primary: Color(0xFF7B1FA2),
+    accent: Color(0xFFE1BEE7),
   ),
   AppColorScheme(
     id: 'ocean_teal',
     name: '海洋青',
-    primary: Color(0xFF00695C),
+    primary: Color(0xFF00897B),
     accent: Color(0xFF80CBC4),
   ),
   AppColorScheme(
     id: 'warm_brown',
     name: '暖木棕',
-    primary: Color(0xFF4E342E),
-    accent: Color(0xFFBCAAA4),
+    primary: Color(0xFF6D4C41),
+    accent: Color(0xFFD7CCC8),
   ),
 ];

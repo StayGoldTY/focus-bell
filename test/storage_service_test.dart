@@ -146,6 +146,48 @@ void main() {
         {'2026-04-14': 2, '2026-04-15': 1},
       );
     });
+
+    test('persists last task category in backup', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final storage = StorageService(prefs);
+
+      await storage.setLastTaskCategoryId('writing');
+      final backup = storage.exportBackup();
+
+      SharedPreferences.setMockInitialValues({});
+      final targetPrefs = await SharedPreferences.getInstance();
+      final targetStorage = StorageService(targetPrefs);
+      await targetStorage.restoreBackup(
+        FocusBackupPayload.fromJsonString(backup.toJsonString()),
+      );
+
+      expect(targetStorage.lastTaskCategoryId, 'writing');
+    });
+
+    test('aggregates focus seconds by task category', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final storage = StorageService(prefs);
+
+      await storage.appendSessionRecord(
+        _buildRecord(
+          id: 'study-1',
+          startedAt: DateTime(2026, 4, 14, 9),
+          actualFocusSeconds: 1800,
+        ),
+      );
+      await storage.appendSessionRecord(
+        _buildRecord(
+          id: 'coding-1',
+          startedAt: DateTime(2026, 4, 14, 11),
+          actualFocusSeconds: 600,
+          categoryId: 'coding',
+        ),
+      );
+
+      expect(storage.getCategoryFocusSeconds(), {'study': 1800, 'coding': 600});
+    });
   });
 }
 
@@ -154,6 +196,7 @@ FocusSessionRecord _buildRecord({
   required DateTime startedAt,
   required int actualFocusSeconds,
   FocusSessionStatus status = FocusSessionStatus.completed,
+  String? categoryId = 'study',
 }) {
   return FocusSessionRecord(
     id: id,
@@ -168,6 +211,6 @@ FocusSessionRecord _buildRecord({
     presetId: 'classic_brac',
     focusSoundId: 'brown_noise',
     taskTitle: '测试任务',
-    taskCategoryId: 'study',
+    taskCategoryId: categoryId,
   );
 }

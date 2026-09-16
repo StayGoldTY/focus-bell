@@ -96,6 +96,9 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
       taskTitle: draft.normalizedTitle,
       taskCategoryId: draft.categoryId,
     );
+    if (draft.categoryId != null) {
+      unawaited(_storage.setLastTaskCategoryId(draft.categoryId));
+    }
 
     _audio.requestWakeLock();
     _restartFocusSoundscape();
@@ -179,6 +182,23 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
 
   void extendBreak() {
     state = state.copyWith(totalSeconds: state.totalSeconds + 300);
+  }
+
+  void skipMicroRest() {
+    if (state.phase != TimerPhase.microRest) {
+      return;
+    }
+    _resumeFromMicroRest();
+  }
+
+  @visibleForTesting
+  void debugEnterMicroRest() {
+    if (state.phase == TimerPhase.idle) {
+      startFocus();
+    }
+    if (state.phase == TimerPhase.focusing) {
+      _enterMicroRest();
+    }
   }
 
   void syncCurrentFocusSoundFromSettings() {

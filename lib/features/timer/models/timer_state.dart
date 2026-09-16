@@ -1,3 +1,5 @@
+import '../../../core/utils/duration_format.dart';
+
 enum TimerPhase { idle, focusing, microRest, longBreak, paused }
 
 class FocusTimerState {
@@ -25,12 +27,13 @@ class FocusTimerState {
 
   double get progress => totalSeconds > 0 ? elapsedSeconds / totalSeconds : 0.0;
 
-  String get remainingFormatted {
-    final remaining = remainingSeconds.clamp(0, totalSeconds);
-    final minutes = remaining ~/ 60;
-    final seconds = remaining % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
+  String get remainingFormatted =>
+      formatClock(remainingSeconds.clamp(0, totalSeconds));
+
+  bool get isIdle => phase == TimerPhase.idle;
+
+  bool get isTimedSession =>
+      phase == TimerPhase.focusing || phase == TimerPhase.paused;
 
   String get phaseLabel {
     switch (phase) {

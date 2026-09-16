@@ -67,8 +67,14 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     final todayVisits = storage.getTodayVisits();
     final totalVisits = storage.totalVisits;
     final recentDailyVisits = storage.getRecentDailyVisits();
+    final categorySeconds = storage.getCategoryFocusSeconds();
+    final weekTotalSeconds = recentDaily.values.fold<int>(
+      0,
+      (sum, value) => sum + value,
+    );
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('专注统计')),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -154,9 +160,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
             dailyGoalMinutes: dailyGoalMinutes,
           ),
           const SizedBox(height: 24),
+          _CategoryBreakdownCard(secondsByCategory: categorySeconds),
+          const SizedBox(height: 24),
           _SectionCard(
             title: '最近 7 天',
-            subtitle: '按本地时间统计你的每日专注时长',
+            subtitle: '按本地时间统计你的每日专注时长 · 本周 ${weekTotalSeconds ~/ 60} 分钟',
             child: _WeeklyTrendChart(data: recentDaily),
           ),
           if (showLegacyNotice) ...[
@@ -319,7 +327,18 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      child: Padding(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withValues(alpha: 0.12),
+              theme.colorScheme.surface.withValues(alpha: 0.55),
+            ],
+          ),
+        ),
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,6 +362,105 @@ class _StatCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CategoryBreakdownCard extends StatelessWidget {
+  final Map<String, int> secondsByCategory;
+
+  const _CategoryBreakdownCard({required this.secondsByCategory});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final entries =
+        focusTaskCategories
+            .map(
+              (category) => (
+                category: category,
+                seconds: secondsByCategory[category.id] ?? 0,
+              ),
+            )
+            .where((entry) => entry.seconds > 0)
+            .toList()
+          ..sort((a, b) => b.seconds.compareTo(a.seconds));
+
+    final knownIds = {for (final category in focusTaskCategories) category.id};
+    for (final mapEntry in secondsByCategory.entries) {
+      if (!knownIds.contains(mapEntry.key) && mapEntry.value > 0) {
+        entries.add((
+          category: const FocusTaskCategory(
+            id: 'unknown',
+            label: '其他',
+            description: '',
+            icon: Icons.flag_rounded,
+          ),
+          seconds: mapEntry.value,
+        ));
+      }
+    }
+
+    final maxSeconds = entries.fold<int>(
+      1,
+      (current, entry) => math.max(current, entry.seconds),
+    );
+
+    return _SectionCard(
+      title: '按任务类型',
+      subtitle: entries.isEmpty ? '给专注加上类型后，这里会显示学习、编程等时间分布' : '来自你留下任务类型的历史记录',
+      child: entries.isEmpty
+          ? Text(
+              '还没有分类数据。开始专注前选一个类型，统计就会出现在这里。',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+            )
+          : Column(
+              children: [
+                for (final entry in entries) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        entry.category.icon,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 44,
+                        child: Text(
+                          entry.category.label,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: (entry.seconds / maxSeconds).clamp(0.04, 1),
+                            minHeight: 8,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${(entry.seconds / 60).round()}m',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ],
+            ),
     );
   }
 }
