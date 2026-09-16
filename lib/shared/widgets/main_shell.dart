@@ -36,6 +36,19 @@ class MainShell extends ConsumerWidget {
     final timerState = ref.watch(timerProvider);
     final currentIndex = _calculateIndex(GoRouterState.of(context).uri.path);
 
+    if (timerState.phase == TimerPhase.microRest ||
+        timerState.phase == TimerPhase.longBreak) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) {
+          return;
+        }
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).popUntil((route) => route is! PopupRoute);
+      });
+    }
+
     if (timerState.phase == TimerPhase.microRest) {
       return const MicroRestOverlay();
     }
@@ -48,7 +61,8 @@ class MainShell extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: child,
+      extendBody: true,
+      body: Padding(padding: const EdgeInsets.only(bottom: 108), child: child),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: DecoratedBox(

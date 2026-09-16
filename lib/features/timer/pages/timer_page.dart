@@ -31,6 +31,7 @@ class _TimerPageState extends ConsumerState<TimerPage> {
 
   late final TextEditingController _titleController;
   late final FocusNode _titleFocusNode;
+  bool _stopDialogOpen = false;
 
   @override
   void initState() {
@@ -86,6 +87,22 @@ class _TimerPageState extends ConsumerState<TimerPage> {
       }
     });
 
+    ref.listen<TimerPhase>(timerProvider.select((state) => state.phase), (
+      previous,
+      next,
+    ) {
+      if (!_stopDialogOpen) {
+        return;
+      }
+      if (next == TimerPhase.microRest || next == TimerPhase.longBreak) {
+        final navigator = Navigator.of(context, rootNavigator: true);
+        if (navigator.canPop()) {
+          navigator.pop(false);
+        }
+        _stopDialogOpen = false;
+      }
+    });
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.space): () {
@@ -126,12 +143,13 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                     _contentMaxWidth,
                   );
               final timerBaseSize = denseLayout
-                  ? 176.0
+                  ? 156.0
                   : compactLayout
-                  ? 208.0
-                  : 248.0;
+                  ? 184.0
+                  : 216.0;
 
               return SafeArea(
+                bottom: false,
                 child: Center(
                   child: SizedBox(
                     width: contentWidth + horizontalPadding * 2,
@@ -146,7 +164,7 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                             0,
                             constraints.maxHeight -
                                 verticalPadding * 2 -
-                                MediaQuery.paddingOf(context).vertical,
+                                MediaQuery.paddingOf(context).top,
                           ),
                         ),
                         child: SizedBox(
@@ -155,16 +173,16 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                             children: [
                               _buildHeader(timerState, storage, theme),
                               if (!denseLayout) ...[
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
                                 _buildQuote(theme),
                               ],
-                              SizedBox(height: denseLayout ? 12 : 18),
+                              SizedBox(height: denseLayout ? 10 : 14),
                               _buildTimer(
                                 timerState,
                                 storage,
                                 timerSize: timerBaseSize,
                               ),
-                              SizedBox(height: denseLayout ? 12 : 16),
+                              SizedBox(height: denseLayout ? 10 : 12),
                               _buildStatusInfo(
                                 timerState,
                                 draft,
@@ -172,24 +190,10 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                                 compactLayout: compactLayout,
                               ),
                               if (timerState.isIdle) ...[
-                                SizedBox(height: denseLayout ? 12 : 16),
-                                _buildIntentionCard(
-                                  draft,
-                                  storage,
-                                  theme,
-                                  denseLayout: denseLayout,
-                                ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: denseLayout ? 10 : 12),
                                 _buildQuickDurations(storage, theme),
                               ],
-                              SizedBox(height: denseLayout ? 12 : 16),
-                              _buildSessionOverview(
-                                timerState,
-                                storage,
-                                theme,
-                                compactLayout: compactLayout,
-                              ),
-                              SizedBox(height: denseLayout ? 14 : 18),
+                              SizedBox(height: denseLayout ? 12 : 14),
                               _buildControls(
                                 timerState,
                                 denseLayout: denseLayout,
@@ -203,6 +207,22 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                                   ),
                                 ),
                               ],
+                              if (timerState.isIdle) ...[
+                                SizedBox(height: denseLayout ? 12 : 16),
+                                _buildIntentionCard(
+                                  draft,
+                                  storage,
+                                  theme,
+                                  denseLayout: denseLayout,
+                                ),
+                              ],
+                              SizedBox(height: denseLayout ? 12 : 16),
+                              _buildSessionOverview(
+                                timerState,
+                                storage,
+                                theme,
+                                compactLayout: compactLayout,
+                              ),
                               SizedBox(height: denseLayout ? 12 : 16),
                               _buildTodayProgress(
                                 timerState,
@@ -759,6 +779,10 @@ class _TimerPageState extends ConsumerState<TimerPage> {
   }
 
   Future<void> _confirmStop() async {
+    if (_stopDialogOpen) {
+      return;
+    }
+    _stopDialogOpen = true;
     final shouldStop = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -779,7 +803,12 @@ class _TimerPageState extends ConsumerState<TimerPage> {
       },
     );
 
-    if (shouldStop == true && mounted) {
+    if (!mounted) {
+      return;
+    }
+    _stopDialogOpen = false;
+
+    if (shouldStop == true) {
       ref.read(timerProvider.notifier).stop();
     }
   }
