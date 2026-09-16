@@ -785,6 +785,7 @@ class _TimerPageState extends ConsumerState<TimerPage> {
     _stopDialogOpen = true;
     final shouldStop = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
           title: const Text('结束本次专注？'),

@@ -49,8 +49,15 @@ void main() {
     await tester.tap(find.text('结束'));
     await tester.pump();
     expect(find.text('结束本次专注？'), findsOneWidget);
+
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pump();
+    expect(find.text('结束本次专注？'), findsOneWidget);
+    expect(container.read(timerProvider).phase, TimerPhase.paused);
+
     await tester.tap(find.text('继续专注'));
     await tester.pump();
+    expect(find.text('结束本次专注？'), findsNothing);
     expect(container.read(timerProvider).phase, TimerPhase.paused);
 
     await tester.tap(find.text('结束'));

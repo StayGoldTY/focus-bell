@@ -1511,6 +1511,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }) async {
     final result = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
           title: Text(title),
