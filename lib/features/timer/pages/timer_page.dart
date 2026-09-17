@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -116,31 +115,24 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                   : compactLayout
                   ? 184.0
                   : 216.0;
-              final availableHeight = math.max(
-                0.0,
-                constraints.maxHeight -
-                    verticalPadding * 2 -
-                    MediaQuery.paddingOf(context).top,
-              );
-
               return SafeArea(
                 bottom: false,
                 child: Center(
                   child: SizedBox(
                     width: contentWidth + horizontalPadding * 2,
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                        vertical: verticalPadding,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: availableHeight),
-                        child: SizedBox(
-                          width: contentWidth,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.fromLTRB(
+                              horizontalPadding,
+                              verticalPadding,
+                              horizontalPadding,
+                              8,
+                            ),
+                            child: SizedBox(
+                              width: contentWidth,
+                              child: Column(
                                 children: [
                                   _buildHeader(timerState, storage, theme),
                                   SizedBox(height: denseLayout ? 10 : 14),
@@ -187,21 +179,27 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                                   ],
                                 ],
                               ),
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  top: denseLayout ? 12 : 16,
-                                ),
-                                child: _buildTodayProgress(
-                                  timerState,
-                                  storage,
-                                  theme,
-                                  denseLayout: denseLayout,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPadding,
+                            4,
+                            horizontalPadding,
+                            denseLayout ? 8 : 12,
+                          ),
+                          child: SizedBox(
+                            width: contentWidth,
+                            child: _buildTodayProgress(
+                              timerState,
+                              storage,
+                              theme,
+                              denseLayout: denseLayout,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

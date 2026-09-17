@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -87,9 +88,11 @@ class SoundApiService {
   SoundApiService() {
     _dio.options
       ..connectTimeout = const Duration(seconds: 20)
-      ..receiveTimeout = const Duration(seconds: 20)
-      ..headers['User-Agent'] =
+      ..receiveTimeout = const Duration(seconds: 20);
+    if (!kIsWeb) {
+      _dio.options.headers['User-Agent'] =
           'FocusBell/1.0 (https://github.com/StayGoldTY/focus-bell)';
+    }
   }
 
   final Dio _dio = Dio();
