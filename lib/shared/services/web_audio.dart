@@ -22,13 +22,15 @@ void playBuiltInSoundOnWeb(
   String texture,
   int pulseCount,
 ) {
-  _playFocusBellPattern(
-    frequency.toJS,
-    duration.toJS,
-    volume.toJS,
-    texture.toJS,
-    pulseCount.toJS,
-  );
+  try {
+    _playFocusBellPattern(
+      frequency.toJS,
+      duration.toJS,
+      volume.toJS,
+      texture.toJS,
+      pulseCount.toJS,
+    );
+  } catch (_) {}
 }
 
 void playToneOnWeb(double frequency, double duration, double volume) {

@@ -180,18 +180,33 @@ void main() {
       expect(targetStorage.lastTaskTitle, '写周报');
     });
 
-    test('science tips default off and syncs today seconds from records', () async {
-      SharedPreferences.setMockInitialValues({
-        'todayFocusSeconds': 900,
-        'todayDate': focusDateKey(DateTime.now()),
-      });
+    test('creates a stable device id without 32-bit shift overflow', () async {
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final storage = StorageService(prefs);
 
-      expect(storage.showScienceTips, isFalse);
-      expect(await storage.syncTodayFromRecords(), 0);
-      expect(storage.todayFocusSeconds, 0);
+      final first = storage.ensureDeviceId();
+      expect(first, startsWith('device-'));
+      expect(first.split('-'), hasLength(3));
+      expect(storage.deviceId, first);
+      expect(storage.exportBackup().deviceId, first);
     });
+
+    test(
+      'science tips default off and syncs today seconds from records',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'todayFocusSeconds': 900,
+          'todayDate': focusDateKey(DateTime.now()),
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final storage = StorageService(prefs);
+
+        expect(storage.showScienceTips, isFalse);
+        expect(await storage.syncTodayFromRecords(), 0);
+        expect(storage.todayFocusSeconds, 0);
+      },
+    );
 
     test('aggregates focus seconds by task category', () async {
       SharedPreferences.setMockInitialValues({});

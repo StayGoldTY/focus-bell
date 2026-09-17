@@ -45,29 +45,46 @@ void main() {
     env.container.dispose();
   });
 
-  test('confirmed stop persists the same ledger across sessions and totals', () async {
-    final env = await _setup();
+  test('stop still returns to idle if session commit throws', () async {
+    final env = await _setup(storageBuilder: ThrowingDeviceIdStorage.new);
     final notifier = env.container.read(timerProvider.notifier);
 
     notifier.startFocus();
     notifier.debugSetFocusElapsed(90);
-    expect(env.storage.todayFocusSeconds, 0);
-
     notifier.stop();
 
-    final records = env.storage.getSessionRecords();
-    expect(records, hasLength(1));
-    expect(records.single.actualFocusSeconds, 90);
-    expect(records.single.status, FocusSessionStatus.stopped);
-    expect(env.storage.todayFocusSeconds, 90);
-    expect(env.storage.totalFocusSeconds, 90);
-    expect(env.storage.completedSessions, 0);
-    expect(env.storage.currentStreak, 1);
-    expect(env.container.read(timerProvider).todayFocusSeconds, 90);
     expect(env.container.read(timerProvider).phase, TimerPhase.idle);
+    expect(env.storage.getSessionRecords(), isEmpty);
 
     env.container.dispose();
   });
+
+  test(
+    'confirmed stop persists the same ledger across sessions and totals',
+    () async {
+      final env = await _setup();
+      final notifier = env.container.read(timerProvider.notifier);
+
+      notifier.startFocus();
+      notifier.debugSetFocusElapsed(90);
+      expect(env.storage.todayFocusSeconds, 0);
+
+      notifier.stop();
+
+      final records = env.storage.getSessionRecords();
+      expect(records, hasLength(1));
+      expect(records.single.actualFocusSeconds, 90);
+      expect(records.single.status, FocusSessionStatus.stopped);
+      expect(env.storage.todayFocusSeconds, 90);
+      expect(env.storage.totalFocusSeconds, 90);
+      expect(env.storage.completedSessions, 0);
+      expect(env.storage.currentStreak, 1);
+      expect(env.container.read(timerProvider).todayFocusSeconds, 90);
+      expect(env.container.read(timerProvider).phase, TimerPhase.idle);
+
+      env.container.dispose();
+    },
+  );
 
   test('pagehide persist-or-discard matches recorded history', () async {
     final env = await _setup();
@@ -167,6 +184,13 @@ class SilentAudioService extends AudioService {
   void releaseWakeLock() {}
 }
 
+class ThrowingDeviceIdStorage extends StorageService {
+  ThrowingDeviceIdStorage(super.prefs);
+
+  @override
+  String get deviceId => throw StateError('device id boom');
+}
+
 class _Env {
   final ProviderContainer container;
   final StorageService storage;
@@ -174,10 +198,13 @@ class _Env {
   const _Env(this.container, this.storage);
 }
 
-Future<_Env> _setup({Map<String, Object> initialValues = const {}}) async {
+Future<_Env> _setup({
+  Map<String, Object> initialValues = const {},
+  StorageService Function(SharedPreferences prefs)? storageBuilder,
+}) async {
   SharedPreferences.setMockInitialValues(initialValues);
   final prefs = await SharedPreferences.getInstance();
-  final storage = StorageService(prefs);
+  final storage = storageBuilder?.call(prefs) ?? StorageService(prefs);
   final container = ProviderContainer(
     overrides: [
       storageServiceProvider.overrideWithValue(storage),

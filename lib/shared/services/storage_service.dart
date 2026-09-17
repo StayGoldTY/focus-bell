@@ -239,6 +239,8 @@ class StorageService {
     return created;
   }
 
+  String ensureDeviceId() => deviceId;
+
   Future<void> setDeviceId(String value) =>
       _prefs.setString(_deviceIdKey, value);
 
@@ -698,7 +700,11 @@ class StorageService {
 
   String _generateId({required String prefix}) {
     final micros = DateTime.now().microsecondsSinceEpoch;
-    final randomBits = _random.nextInt(1 << 32).toRadixString(16);
+    // dart2js folds `1 << 32` to 0, and Random.nextInt(0) throws. Keep the
+    // argument inside signed 32-bit so Web session commit / export can run.
+    final randomBits =
+        '${_random.nextInt(1 << 16).toRadixString(16).padLeft(4, '0')}'
+        '${_random.nextInt(1 << 16).toRadixString(16).padLeft(4, '0')}';
     return '$prefix-$micros-$randomBits';
   }
 }

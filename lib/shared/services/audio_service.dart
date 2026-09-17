@@ -143,8 +143,16 @@ class AudioService {
   }
 
   Future<void> stopAll() async {
-    await stopAlert();
-    await stopAmbient();
+    try {
+      await stopAlert();
+    } catch (e) {
+      debugPrint('AudioService.stopAlert error: $e');
+    }
+    try {
+      await stopAmbient();
+    } catch (e) {
+      debugPrint('AudioService.stopAmbient error: $e');
+    }
   }
 
   void requestWakeLock() {

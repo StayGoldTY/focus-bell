@@ -82,8 +82,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   int _liveTodaySeconds(int sessionSeconds) {
-    final countable =
-        sessionSeconds >= AppConstants.minRecordableFocusSeconds
+    final countable = sessionSeconds >= AppConstants.minRecordableFocusSeconds
         ? sessionSeconds
         : 0;
     return _baseTodayFocusSeconds + countable;
@@ -172,29 +171,12 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   void stop() {
-    _pendingMicroRest = false;
-    _ticker?.cancel();
-    unawaited(_audio.stopAll());
-    _audio.releaseWakeLock();
-
-    if (state.phase == TimerPhase.focusing) {
-      _captureCurrentFocusProgressBeforeExit();
-    }
-
-    final today = _sessionSnapshot != null
-        ? _commitFocusSession(
-            status: FocusSessionStatus.stopped,
-            microRestCount: state.microRestCount,
-          )
-        : state.todayFocusSeconds;
-
-    _resetToIdleState(today);
+    _endActiveSession(status: FocusSessionStatus.stopped);
   }
 
   void skipBreak() {
     _ticker?.cancel();
-    unawaited(_audio.stopAll());
-    _audio.releaseWakeLock();
+    _shutdownSessionAudio();
     _clearSessionMetadata();
     _resetToIdleState(state.todayFocusSeconds);
   }
@@ -263,21 +245,29 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
 
   @visibleForTesting
   void persistOrDiscardActiveSession() {
-    if (state.phase == TimerPhase.focusing) {
-      _captureCurrentFocusProgressBeforeExit();
-    }
+    _endActiveSession(status: FocusSessionStatus.stopped);
+  }
 
+  void _endActiveSession({required FocusSessionStatus status}) {
     _pendingMicroRest = false;
     _ticker?.cancel();
-    unawaited(_audio.stopAll());
-    _audio.releaseWakeLock();
+    _shutdownSessionAudio();
 
-    final today = _sessionSnapshot != null
-        ? _commitFocusSession(
-            status: FocusSessionStatus.stopped,
-            microRestCount: state.microRestCount,
-          )
-        : state.todayFocusSeconds;
+    var today = state.todayFocusSeconds;
+    try {
+      if (state.phase == TimerPhase.focusing) {
+        _captureCurrentFocusProgressBeforeExit();
+      }
+      today = _sessionSnapshot != null
+          ? _commitFocusSession(
+              status: status,
+              microRestCount: state.microRestCount,
+            )
+          : state.todayFocusSeconds;
+    } catch (error, stackTrace) {
+      debugPrint('Focus timer session commit failed: $error\n$stackTrace');
+      _clearSessionMetadata();
+    }
     _resetToIdleState(today);
   }
 
@@ -317,7 +307,13 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
 
   void _startTicker() {
     _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      try {
+        _tick();
+      } catch (error, stackTrace) {
+        debugPrint('Focus timer tick failed: $error\n$stackTrace');
+      }
+    });
   }
 
   void _tick() {
@@ -345,10 +341,16 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     if (totalFocusing >= totalSeconds) {
       _ticker?.cancel();
       _focusingAccumulated = totalFocusing;
-      final today = _commitFocusSession(
-        status: FocusSessionStatus.completed,
-        microRestCount: state.microRestCount,
-      );
+      var today = _liveTodaySeconds(totalFocusing);
+      try {
+        today = _commitFocusSession(
+          status: FocusSessionStatus.completed,
+          microRestCount: state.microRestCount,
+        );
+      } catch (error, stackTrace) {
+        debugPrint('Focus timer completion commit failed: $error\n$stackTrace');
+        _clearSessionMetadata();
+      }
       _startLongBreak(today);
       return;
     }
@@ -387,8 +389,7 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
     final elapsed = _currentPhaseElapsed;
     if (elapsed >= state.totalSeconds) {
       _ticker?.cancel();
-      unawaited(_audio.stopAll());
-      _audio.releaseWakeLock();
+      _shutdownSessionAudio();
       _playAlertSound();
       state = FocusTimerState(todayFocusSeconds: state.todayFocusSeconds);
       return;
@@ -480,29 +481,50 @@ class TimerNotifier extends StateNotifier<FocusTimerState>
   }
 
   void _scheduleNextBell() {
-    final minSeconds = _storage.minInterval * 60;
-    final maxSeconds = _storage.maxInterval * 60;
+    final minMinutes = max(
+      1,
+      min(_storage.minInterval, AppConstants.maxIntervalMinutes),
+    );
+    final maxMinutes = max(
+      minMinutes,
+      min(_storage.maxInterval, AppConstants.maxIntervalMinutes),
+    );
+    final minSeconds = minMinutes * 60;
+    final maxSeconds = maxMinutes * 60;
     final delay = minSeconds + _random.nextInt(maxSeconds - minSeconds + 1);
     _nextBellAt = DateTime.now().add(Duration(seconds: delay));
   }
 
   void _playAlertSound() {
-    final sounds = builtInSounds;
-    if (sounds.isEmpty) {
-      return;
-    }
+    try {
+      final sounds = builtInSounds;
+      if (sounds.isEmpty) {
+        return;
+      }
 
-    if (_storage.randomSoundMode) {
-      final sound = sounds[_random.nextInt(sounds.length)];
+      if (_storage.randomSoundMode) {
+        final sound = sounds[_random.nextInt(sounds.length)];
+        unawaited(_audio.playBuiltInSound(sound, volume: _storage.alertVolume));
+        return;
+      }
+
+      final sound = sounds.firstWhere(
+        (item) => item.id == _storage.selectedSoundId,
+        orElse: () => sounds.first,
+      );
       unawaited(_audio.playBuiltInSound(sound, volume: _storage.alertVolume));
-      return;
+    } catch (error, stackTrace) {
+      debugPrint('Focus timer alert failed: $error\n$stackTrace');
     }
+  }
 
-    final sound = sounds.firstWhere(
-      (item) => item.id == _storage.selectedSoundId,
-      orElse: () => sounds.first,
-    );
-    unawaited(_audio.playBuiltInSound(sound, volume: _storage.alertVolume));
+  void _shutdownSessionAudio() {
+    try {
+      unawaited(_audio.stopAll());
+      _audio.releaseWakeLock();
+    } catch (error, stackTrace) {
+      debugPrint('Focus timer audio shutdown failed: $error\n$stackTrace');
+    }
   }
 
   void _selectFocusSoundscapeForSession() {
