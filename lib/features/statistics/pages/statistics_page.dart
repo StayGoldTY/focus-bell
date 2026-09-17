@@ -26,25 +26,19 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     final theme = Theme.of(context);
 
     final allRecords = storage.getSessionRecords();
-    final liveTodaySeconds = math.max(
-      timerState.todayFocusSeconds,
-      storage.todayFocusSeconds,
-    );
+    final liveTodaySeconds = timerState.todayFocusSeconds;
     final currentStreak = storage.getEffectiveCurrentStreak();
     final bestStreak = storage.bestStreak;
     final totalSeconds = storage.totalFocusSeconds;
     final sessions = storage.completedSessions;
     final todayMinutes = liveTodaySeconds ~/ 60;
     final dailyGoalMinutes = storage.dailyGoalMinutes;
-    final dailyProgress = dailyGoalMinutes > 0
+    final dailyProgress = dailyGoalMinutes > 0 && liveTodaySeconds >= 60
         ? (liveTodaySeconds / (dailyGoalMinutes * 60)).clamp(0.0, 1.0)
         : 0.0;
     final recentDaily = storage.getRecentDailyFocusSeconds();
     final todayKey = focusDateKey(DateTime.now());
-    recentDaily[todayKey] = math.max(
-      recentDaily[todayKey] ?? 0,
-      liveTodaySeconds,
-    );
+    recentDaily[todayKey] = liveTodaySeconds;
     final filteredRecords = allRecords
         .where((record) {
           switch (_filter) {
@@ -64,9 +58,6 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     final averageMinutes = sessions > 0
         ? (totalSeconds / sessions / 60).round()
         : 0;
-    final todayVisits = storage.getTodayVisits();
-    final totalVisits = storage.totalVisits;
-    final recentDailyVisits = storage.getRecentDailyVisits();
     final categorySeconds = storage.getCategoryFocusSeconds();
     final weekTotalSeconds = recentDaily.values.fold<int>(
       0,
@@ -77,7 +68,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('专注统计')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
           Text(
             '你的专注数据',
@@ -167,31 +158,6 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
             subtitle: '按本地时间统计你的每日专注时长 · 本周 ${weekTotalSeconds ~/ 60} 分钟',
             child: _WeeklyTrendChart(data: recentDaily),
           ),
-          if (showLegacyNotice) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(
-                  alpha: 0.35,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                '你之前的累计时长已经保留，但完整历史记录会从这个版本开始逐步积累。',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 24),
-          _VisitStatsCard(
-            todayVisits: todayVisits,
-            totalVisits: totalVisits,
-            recentDailyVisits: recentDailyVisits,
-          ),
           const SizedBox(height: 24),
           _SectionCard(
             title: '最近专注记录',
@@ -221,36 +187,25 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(24),
+          if (showLegacyNotice) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer.withValues(
-                  alpha: 0.3,
+                  alpha: 0.35,
                 ),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.emoji_events_rounded,
-                    size: 48,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _getEncouragement(totalSeconds),
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      height: 1.6,
-                    ),
-                  ),
-                ],
+              child: Text(
+                '你之前的累计时长已经保留，但完整历史记录会从这个版本开始逐步积累。',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  height: 1.5,
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -280,31 +235,24 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Text(
-        message,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          height: 1.5,
-        ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.emoji_events_outlined,
+            size: 36,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.5,
+            ),
+          ),
+        ],
       ),
     );
-  }
-
-  String _getEncouragement(int totalSeconds) {
-    final hours = totalSeconds / 3600;
-    if (hours < 1) {
-      return '万事开头难，坚持就是胜利。\n开始你的第一轮专注吧。';
-    }
-    if (hours < 5) {
-      return '很好的开局。\n你已经积累了 ${hours.toStringAsFixed(1)} 小时的深度专注。';
-    }
-    if (hours < 20) {
-      return '稳步提升中。\n你的大脑正在更擅长进入专注状态。';
-    }
-    if (hours < 50) {
-      return '这个节奏很扎实。\n持续的深度专注正在重塑你的工作习惯。';
-    }
-    return '专注大师。\n你已经建立起非常稳定的长期专注能力。';
   }
 }
 
@@ -536,170 +484,6 @@ class _DailyGoalProgressCard extends StatelessWidget {
       return '${hours}h ${minutes}m';
     }
     return '${minutes}min';
-  }
-}
-
-class _VisitStatsCard extends StatelessWidget {
-  final int todayVisits;
-  final int totalVisits;
-  final Map<String, int> recentDailyVisits;
-
-  const _VisitStatsCard({
-    required this.todayVisits,
-    required this.totalVisits,
-    required this.recentDailyVisits,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return _SectionCard(
-      title: '访问统计',
-      subtitle: '当前浏览器本地记录',
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _VisitMetric(
-                  icon: Icons.today_rounded,
-                  label: '今日访问',
-                  value: '$todayVisits',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _VisitMetric(
-                  icon: Icons.all_inclusive_rounded,
-                  label: '累计访问',
-                  value: '$totalVisits',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _VisitTrend(data: recentDailyVisits),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '近 7 天',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VisitMetric extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _VisitMetric({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = theme.colorScheme.tertiary;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VisitTrend extends StatelessWidget {
-  final Map<String, int> data;
-
-  const _VisitTrend({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final entries = data.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    final maxValue = entries.fold<int>(
-      1,
-      (current, entry) => math.max(current, entry.value),
-    );
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: entries.map((entry) {
-        final ratio = entry.value / maxValue;
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  '${entry.value}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  height: 48 * ratio.clamp(0.12, 1.0),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.tertiary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _WeeklyTrendChart._formatDayLabel(entry.key),
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
   }
 }
 

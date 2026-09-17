@@ -31,7 +31,9 @@ class AppConstants {
   static const Duration fadeOutDuration = Duration(milliseconds: 500);
   static const Duration pulseAnimationDuration = Duration(milliseconds: 2000);
 
+  /// Extra space so the last list row sits above the floating bottom nav.
+  static const double shellNavClearance = 136;
+
   static const String wikimediaCommonsApiUrl =
       'https://commons.wikimedia.org/w/api.php';
-  static const String openverseApiUrl = 'https://api.openverse.org/v1/audio/';
 }

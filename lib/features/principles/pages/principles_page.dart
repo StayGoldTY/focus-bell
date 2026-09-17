@@ -11,7 +11,7 @@ class PrinciplesPage extends StatelessWidget {
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('科学原理')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
           Text(
             '为什么 FocusBell 有效？',
@@ -175,10 +175,11 @@ class _PrincipleCard extends StatelessWidget {
           backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color, size: 24),
         ),
-        title: Row(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(width: 8),
+            const SizedBox(height: 2),
             Text(
               titleEn,
               style: theme.textTheme.bodySmall?.copyWith(

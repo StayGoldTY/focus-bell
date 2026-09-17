@@ -1,11 +1,9 @@
-enum FocusSoundSourceType { builtIn, wikimedia, openverse }
+enum FocusSoundSourceType { builtIn, wikimedia }
 
 FocusSoundSourceType parseFocusSoundSourceType(String? raw) {
   switch (raw) {
     case 'wikimedia':
       return FocusSoundSourceType.wikimedia;
-    case 'openverse':
-      return FocusSoundSourceType.openverse;
     default:
       return FocusSoundSourceType.builtIn;
   }

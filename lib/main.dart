@@ -16,7 +16,7 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final storageService = StorageService(prefs);
-  await storageService.recordVisit();
+  await storageService.syncTodayFromRecords();
   final audioService = AudioService();
   await audioService.init();
 

@@ -6,9 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/focus_quotes.dart';
 import '../../../core/constants/sound_data.dart';
-import '../../../core/models/focus_external_sound.dart';
 import '../../../core/models/focus_task_category.dart';
 import '../../../core/utils/duration_format.dart';
 import '../../../shared/services/storage_service.dart';
@@ -37,22 +35,9 @@ class _TimerPageState extends ConsumerState<TimerPage> {
   void initState() {
     super.initState();
     final draft = ref.read(focusSessionDraftProvider);
-    final storage = ref.read(storageServiceProvider);
     _titleController = TextEditingController(text: draft.title);
     _titleFocusNode = FocusNode();
     _titleController.addListener(_onTitleChanged);
-
-    final lastCategory = findFocusTaskCategoryById(storage.lastTaskCategoryId);
-    if (draft.categoryId == null && lastCategory != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        ref
-            .read(focusSessionDraftProvider.notifier)
-            .setCategory(lastCategory.id);
-      });
-    }
   }
 
   @override
@@ -84,22 +69,6 @@ class _TimerPageState extends ConsumerState<TimerPage> {
           text: next.title,
           selection: TextSelection.collapsed(offset: next.title.length),
         );
-      }
-    });
-
-    ref.listen<TimerPhase>(timerProvider.select((state) => state.phase), (
-      previous,
-      next,
-    ) {
-      if (!_stopDialogOpen) {
-        return;
-      }
-      if (next == TimerPhase.microRest || next == TimerPhase.longBreak) {
-        final navigator = Navigator.of(context, rootNavigator: true);
-        if (navigator.canPop()) {
-          navigator.pop(false);
-        }
-        _stopDialogOpen = false;
       }
     });
 
@@ -147,6 +116,12 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                   : compactLayout
                   ? 184.0
                   : 216.0;
+              final availableHeight = math.max(
+                0.0,
+                constraints.maxHeight -
+                    verticalPadding * 2 -
+                    MediaQuery.paddingOf(context).top,
+              );
 
               return SafeArea(
                 bottom: false,
@@ -159,76 +134,69 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                         vertical: verticalPadding,
                       ),
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: math.max(
-                            0,
-                            constraints.maxHeight -
-                                verticalPadding * 2 -
-                                MediaQuery.paddingOf(context).top,
-                          ),
-                        ),
+                        constraints: BoxConstraints(minHeight: availableHeight),
                         child: SizedBox(
                           width: contentWidth,
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _buildHeader(timerState, storage, theme),
-                              if (!denseLayout) ...[
-                                const SizedBox(height: 8),
-                                _buildQuote(theme),
-                              ],
-                              SizedBox(height: denseLayout ? 10 : 14),
-                              _buildTimer(
-                                timerState,
-                                storage,
-                                timerSize: timerBaseSize,
-                              ),
-                              SizedBox(height: denseLayout ? 10 : 12),
-                              _buildStatusInfo(
-                                timerState,
-                                draft,
-                                theme,
-                                compactLayout: compactLayout,
-                              ),
-                              if (timerState.isIdle) ...[
-                                SizedBox(height: denseLayout ? 10 : 12),
-                                _buildQuickDurations(storage, theme),
-                              ],
-                              SizedBox(height: denseLayout ? 12 : 14),
-                              _buildControls(
-                                timerState,
-                                denseLayout: denseLayout,
-                              ),
-                              if (kIsWeb && timerState.isIdle) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  '空格开始 / 暂停 · Esc 结束',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
+                              Column(
+                                children: [
+                                  _buildHeader(timerState, storage, theme),
+                                  SizedBox(height: denseLayout ? 10 : 14),
+                                  _buildTimer(
+                                    timerState,
+                                    storage,
+                                    timerSize: timerBaseSize,
                                   ),
+                                  SizedBox(height: denseLayout ? 10 : 12),
+                                  _buildStatusInfo(
+                                    timerState,
+                                    draft,
+                                    theme,
+                                    compactLayout: compactLayout,
+                                  ),
+                                  if (timerState.isIdle) ...[
+                                    SizedBox(height: denseLayout ? 10 : 12),
+                                    _buildQuickDurations(storage, theme),
+                                  ],
+                                  SizedBox(height: denseLayout ? 12 : 14),
+                                  _buildControls(
+                                    timerState,
+                                    denseLayout: denseLayout,
+                                  ),
+                                  if (kIsWeb && timerState.isIdle) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      '空格开始 / 暂停 · Esc 结束',
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                  if (timerState.isIdle) ...[
+                                    SizedBox(height: denseLayout ? 12 : 16),
+                                    _buildIntentionCard(
+                                      draft,
+                                      theme,
+                                      denseLayout: denseLayout,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  top: denseLayout ? 12 : 16,
                                 ),
-                              ],
-                              if (timerState.isIdle) ...[
-                                SizedBox(height: denseLayout ? 12 : 16),
-                                _buildIntentionCard(
-                                  draft,
+                                child: _buildTodayProgress(
+                                  timerState,
                                   storage,
                                   theme,
                                   denseLayout: denseLayout,
                                 ),
-                              ],
-                              SizedBox(height: denseLayout ? 12 : 16),
-                              _buildSessionOverview(
-                                timerState,
-                                storage,
-                                theme,
-                                compactLayout: compactLayout,
-                              ),
-                              SizedBox(height: denseLayout ? 12 : 16),
-                              _buildTodayProgress(
-                                timerState,
-                                storage,
-                                theme,
-                                denseLayout: denseLayout,
                               ),
                             ],
                           ),
@@ -290,44 +258,33 @@ class _TimerPageState extends ConsumerState<TimerPage> {
             ],
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.local_fire_department_rounded,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                streak > 0 ? '$streak 天连续' : '开始连续',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w700,
+        if (streak > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.local_fire_department_rounded,
+                  size: 16,
+                  color: theme.colorScheme.primary,
                 ),
-              ),
-            ],
+                const SizedBox(width: 4),
+                Text(
+                  '$streak 天连续',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
       ],
-    );
-  }
-
-  Widget _buildQuote(ThemeData theme) {
-    return Text(
-      FocusQuotes.forDate(DateTime.now()),
-      textAlign: TextAlign.center,
-      style: theme.textTheme.bodySmall?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-        height: 1.45,
-        fontStyle: FontStyle.italic,
-      ),
     );
   }
 
@@ -410,7 +367,6 @@ class _TimerPageState extends ConsumerState<TimerPage> {
 
   Widget _buildIntentionCard(
     FocusSessionDraft draft,
-    StorageService storage,
     ThemeData theme, {
     required bool denseLayout,
   }) {
@@ -455,15 +411,10 @@ class _TimerPageState extends ConsumerState<TimerPage> {
                   avatar: Icon(category.icon, size: 16),
                   label: Text(category.label),
                   selected: draft.categoryId == category.id,
-                  onSelected: (selected) async {
-                    final nextId = selected ? category.id : null;
+                  onSelected: (selected) {
                     ref
                         .read(focusSessionDraftProvider.notifier)
-                        .setCategory(nextId);
-                    await storage.setLastTaskCategoryId(nextId);
-                    if (mounted) {
-                      setState(() {});
-                    }
+                        .setCategory(selected ? category.id : null);
                   },
                 ),
             ],
@@ -474,6 +425,8 @@ class _TimerPageState extends ConsumerState<TimerPage> {
   }
 
   Widget _buildQuickDurations(StorageService storage, ThemeData theme) {
+    final isCustom = storage.selectedFocusPresetId == customFocusPresetId;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -506,83 +459,16 @@ class _TimerPageState extends ConsumerState<TimerPage> {
             ],
           ],
         ),
+        if (isCustom) ...[
+          const SizedBox(height: 8),
+          Text(
+            '已改为自定义时长，也可在设置里改回方案。',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ],
-    );
-  }
-
-  Widget _buildSessionOverview(
-    FocusTimerState timerState,
-    StorageService storage,
-    ThemeData theme, {
-    required bool compactLayout,
-  }) {
-    final preset = findFocusPresetById(storage.selectedFocusPresetId);
-    final sourceType = storage.focusSoundSourceType;
-    final selectedExternal = storage.selectedExternalFocusSound;
-    final currentExternal =
-        selectedExternal != null && selectedExternal.sourceType == sourceType
-        ? selectedExternal
-        : null;
-    final dynamic activeSound = sourceType == FocusSoundSourceType.builtIn
-        ? (timerState.activeFocusSoundId != null
-              ? findFocusSoundscapeById(timerState.activeFocusSoundId!)
-              : null)
-        : currentExternal;
-    final dynamic configuredSound = sourceType == FocusSoundSourceType.builtIn
-        ? findFocusSoundscapeById(storage.selectedFocusSoundId)
-        : (currentExternal ??
-              _NamedChipSound(switch (sourceType) {
-                FocusSoundSourceType.wikimedia => 'Wikimedia',
-                FocusSoundSourceType.openverse => 'Openverse',
-                FocusSoundSourceType.builtIn => '内置',
-              }));
-
-    final summaryItems = <_OverviewChip>[
-      _OverviewChip(
-        label: '模式',
-        value: preset?.name ?? '自定义',
-        icon: Icons.auto_awesome_rounded,
-      ),
-      _OverviewChip(
-        label: '节奏',
-        value: '${storage.focusDuration}/${storage.breakDuration} 分钟',
-        icon: Icons.timelapse_rounded,
-      ),
-      _OverviewChip(
-        label: '提醒',
-        value: '${storage.minInterval}-${storage.maxInterval} 分钟',
-        icon: Icons.notifications_active_rounded,
-      ),
-      if (!compactLayout || timerState.phase != TimerPhase.idle)
-        _OverviewChip(
-          label: '背景音',
-          value: !storage.focusSoundEnabled
-              ? '关闭'
-              : activeSound?.name ??
-                    (storage.randomFocusSoundMode
-                        ? '随机'
-                        : (configuredSound?.name ?? '开启')),
-          icon: Icons.headphones_rounded,
-        ),
-    ];
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(compactLayout ? 12 : 14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: summaryItems
-            .map((item) => _buildOverviewChip(item, theme))
-            .toList(),
-      ),
     );
   }
 
@@ -654,25 +540,6 @@ class _TimerPageState extends ConsumerState<TimerPage> {
           ],
         );
       case TimerPhase.longBreak:
-        return Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: notifier.skipBreak,
-                icon: const Icon(Icons.skip_next_rounded),
-                label: const Text('跳过'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: notifier.extendBreak,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('+5 分钟'),
-              ),
-            ),
-          ],
-        );
       case TimerPhase.microRest:
         return const SizedBox.shrink();
     }
@@ -724,35 +591,9 @@ class _TimerPageState extends ConsumerState<TimerPage> {
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              value: progress,
+              value: todaySeconds < 60 ? 0 : progress,
               minHeight: denseLayout ? 7 : 9,
               backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverviewChip(_OverviewChip item, ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.55,
-        ),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(item.icon, size: 14, color: theme.colorScheme.primary),
-          const SizedBox(width: 6),
-          Text(
-            '${item.label} · ${item.value}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -783,6 +624,7 @@ class _TimerPageState extends ConsumerState<TimerPage> {
       return;
     }
     _stopDialogOpen = true;
+    ref.read(sessionEndPromptOpenProvider.notifier).state = true;
     final shouldStop = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -805,13 +647,15 @@ class _TimerPageState extends ConsumerState<TimerPage> {
     );
 
     if (!mounted) {
+      ref
+          .read(timerProvider.notifier)
+          .onSessionEndPromptResolved(confirmedStop: shouldStop == true);
       return;
     }
     _stopDialogOpen = false;
-
-    if (shouldStop == true) {
-      ref.read(timerProvider.notifier).stop();
-    }
+    ref
+        .read(timerProvider.notifier)
+        .onSessionEndPromptResolved(confirmedStop: shouldStop == true);
   }
 }
 
@@ -864,22 +708,4 @@ class _DurationChip extends StatelessWidget {
       ),
     );
   }
-}
-
-class _OverviewChip {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _OverviewChip({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-}
-
-class _NamedChipSound {
-  final String name;
-
-  const _NamedChipSound(this.name);
 }

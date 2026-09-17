@@ -65,6 +65,19 @@ void main() {
       expect(storage.selectedExternalFocusSound, isNull);
     });
 
+    test('falls back from removed Openverse source to built-in', () async {
+      SharedPreferences.setMockInitialValues({
+        'focusSoundSourceType': 'openverse',
+        'selectedExternalFocusSoundJson':
+            '{"sourceType":"openverse","id":"openverse_1","name":"Rain","description":"legacy"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final storage = StorageService(prefs);
+
+      expect(storage.focusSoundSourceType, FocusSoundSourceType.builtIn);
+      expect(storage.selectedExternalFocusSound, isNull);
+    });
+
     test('keeps only the latest history records up to the limit', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -147,12 +160,13 @@ void main() {
       );
     });
 
-    test('persists last task category in backup', () async {
+    test('persists last task title and category in backup', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final storage = StorageService(prefs);
 
       await storage.setLastTaskCategoryId('writing');
+      await storage.setLastTaskTitle('写周报');
       final backup = storage.exportBackup();
 
       SharedPreferences.setMockInitialValues({});
@@ -163,6 +177,20 @@ void main() {
       );
 
       expect(targetStorage.lastTaskCategoryId, 'writing');
+      expect(targetStorage.lastTaskTitle, '写周报');
+    });
+
+    test('science tips default off and syncs today seconds from records', () async {
+      SharedPreferences.setMockInitialValues({
+        'todayFocusSeconds': 900,
+        'todayDate': focusDateKey(DateTime.now()),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final storage = StorageService(prefs);
+
+      expect(storage.showScienceTips, isFalse);
+      expect(await storage.syncTodayFromRecords(), 0);
+      expect(storage.todayFocusSeconds, 0);
     });
 
     test('aggregates focus seconds by task category', () async {

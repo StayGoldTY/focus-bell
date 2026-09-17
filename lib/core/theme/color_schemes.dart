@@ -33,22 +33,11 @@ const List<AppColorScheme> appColorSchemes = [
     primary: Color(0xFFE65100),
     accent: Color(0xFFFFCC02),
   ),
-  AppColorScheme(
-    id: 'lavender',
-    name: '薰衣草紫',
-    primary: Color(0xFF7B1FA2),
-    accent: Color(0xFFE1BEE7),
-  ),
-  AppColorScheme(
-    id: 'ocean_teal',
-    name: '海洋青',
-    primary: Color(0xFF00897B),
-    accent: Color(0xFF80CBC4),
-  ),
-  AppColorScheme(
-    id: 'warm_brown',
-    name: '暖木棕',
-    primary: Color(0xFF6D4C41),
-    accent: Color(0xFFD7CCC8),
-  ),
 ];
+
+AppColorScheme colorSchemeById(String id) {
+  return appColorSchemes.firstWhere(
+    (scheme) => scheme.id == id,
+    orElse: () => appColorSchemes.first,
+  );
+}

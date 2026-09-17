@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/constants/app_constants.dart';
 import '../../features/timer/models/timer_state.dart';
-import '../../features/timer/pages/micro_rest_page.dart';
 import '../../features/timer/pages/long_break_page.dart';
+import '../../features/timer/pages/micro_rest_page.dart';
 import '../../features/timer/providers/timer_provider.dart';
 
 class MainShell extends ConsumerWidget {
@@ -34,10 +36,12 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final timerState = ref.watch(timerProvider);
+    final endPromptOpen = ref.watch(sessionEndPromptOpenProvider);
     final currentIndex = _calculateIndex(GoRouterState.of(context).uri.path);
+    final bottomClearance =
+        AppConstants.shellNavClearance + MediaQuery.paddingOf(context).bottom;
 
-    if (timerState.phase == TimerPhase.microRest ||
-        timerState.phase == TimerPhase.longBreak) {
+    if (timerState.phase == TimerPhase.longBreak) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) {
           return;
@@ -49,7 +53,7 @@ class MainShell extends ConsumerWidget {
       });
     }
 
-    if (timerState.phase == TimerPhase.microRest) {
+    if (timerState.phase == TimerPhase.microRest && !endPromptOpen) {
       return const MicroRestOverlay();
     }
 
@@ -62,7 +66,10 @@ class MainShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
-      body: Padding(padding: const EdgeInsets.only(bottom: 108), child: child),
+      body: Padding(
+        padding: EdgeInsets.only(bottom: bottomClearance),
+        child: child,
+      ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: DecoratedBox(

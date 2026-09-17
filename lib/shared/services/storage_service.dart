@@ -29,10 +29,7 @@ class StorageService {
   static const _focusSoundSourceTypeKey = 'focusSoundSourceType';
   static const _selectedExternalFocusSoundJsonKey =
       'selectedExternalFocusSoundJson';
-  static const _freesoundApiKeyKey = 'freesoundApiKey';
-  static const _soundscapeApiKeyKey = 'soundscapeApiKey';
   static const _selectedFocusPresetIdKey = 'selectedFocusPresetId';
-  static const _vibrationEnabledKey = 'vibrationEnabled';
   static const _showScienceTipsKey = 'showScienceTips';
   static const _themeModeKey = 'themeMode';
   static const _colorSchemeIdKey = 'colorSchemeId';
@@ -41,6 +38,7 @@ class StorageService {
   static const _focusSoundVolumeKey = 'focusSoundVolume';
   static const _dailyGoalMinutesKey = 'dailyGoalMinutes';
   static const _lastTaskCategoryIdKey = 'lastTaskCategoryId';
+  static const _lastTaskTitleKey = 'lastTaskTitle';
   static const _deviceIdKey = 'deviceId';
   static const _sessionRecordsJsonKey = 'sessionRecordsJson';
   static const _totalFocusSecondsKey = 'totalFocusSeconds';
@@ -124,8 +122,7 @@ class StorageService {
     try {
       final json = Map<String, dynamic>.from(jsonDecode(raw) as Map);
       final rawSource = json['sourceType'] as String?;
-      if (rawSource != FocusSoundSourceType.wikimedia.name &&
-          rawSource != FocusSoundSourceType.openverse.name) {
+      if (rawSource != FocusSoundSourceType.wikimedia.name) {
         return null;
       }
       return FocusExternalSound.fromJson(json);
@@ -144,14 +141,6 @@ class StorageService {
 
   Future<void> clearSelectedExternalFocusSound() =>
       _prefs.remove(_selectedExternalFocusSoundJsonKey);
-
-  String get freesoundApiKey => _prefs.getString(_freesoundApiKeyKey) ?? '';
-  Future<void> setFreesoundApiKey(String value) =>
-      _prefs.setString(_freesoundApiKeyKey, value.trim());
-
-  String get soundscapeApiKey => _prefs.getString(_soundscapeApiKeyKey) ?? '';
-  Future<void> setSoundscapeApiKey(String value) =>
-      _prefs.setString(_soundscapeApiKeyKey, value.trim());
 
   String get selectedFocusPresetId =>
       _prefs.getString(_selectedFocusPresetIdKey) ?? defaultFocusPresetId;
@@ -177,11 +166,7 @@ class StorageService {
     }
   }
 
-  bool get vibrationEnabled => _prefs.getBool(_vibrationEnabledKey) ?? true;
-  Future<void> setVibrationEnabled(bool value) =>
-      _prefs.setBool(_vibrationEnabledKey, value);
-
-  bool get showScienceTips => _prefs.getBool(_showScienceTipsKey) ?? true;
+  bool get showScienceTips => _prefs.getBool(_showScienceTipsKey) ?? false;
   Future<void> setShowScienceTips(bool value) =>
       _prefs.setBool(_showScienceTipsKey, value);
 
@@ -232,6 +217,15 @@ class StorageService {
       return _prefs.remove(_lastTaskCategoryIdKey);
     }
     return _prefs.setString(_lastTaskCategoryIdKey, trimmed);
+  }
+
+  String get lastTaskTitle => _prefs.getString(_lastTaskTitleKey) ?? '';
+  Future<void> setLastTaskTitle(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return _prefs.remove(_lastTaskTitleKey);
+    }
+    return _prefs.setString(_lastTaskTitleKey, trimmed);
   }
 
   String get deviceId {
@@ -334,16 +328,27 @@ class StorageService {
     return 0;
   }
 
-  Future<int> normalizeTodayStats({DateTime? now}) async {
+  int recordedTodayFocusSeconds({DateTime? now}) {
     final todayKey = focusDateKey(now ?? DateTime.now());
-    if (todayDate != todayKey) {
-      await setTodayDate(todayKey);
-      await setTodayFocusSeconds(0);
-      return 0;
+    var total = 0;
+    for (final record in getSessionRecords()) {
+      if (focusDateKey(record.startedAt) == todayKey) {
+        total += record.actualFocusSeconds;
+      }
     }
-
-    return todayFocusSeconds;
+    return total;
   }
+
+  Future<int> syncTodayFromRecords({DateTime? now}) async {
+    final todayKey = focusDateKey(now ?? DateTime.now());
+    final recorded = recordedTodayFocusSeconds(now: now);
+    await setTodayDate(todayKey);
+    await setTodayFocusSeconds(recorded);
+    return recorded;
+  }
+
+  Future<int> normalizeTodayStats({DateTime? now}) =>
+      syncTodayFromRecords(now: now);
 
   List<FocusSessionRecord> getSessionRecords() {
     final raw = _prefs.getString(_sessionRecordsJsonKey);
@@ -516,7 +521,6 @@ class StorageService {
           ? jsonEncode(selectedExternalFocusSound!.toJson())
           : null,
       _selectedFocusPresetIdKey: selectedFocusPresetId,
-      _vibrationEnabledKey: vibrationEnabled,
       _showScienceTipsKey: showScienceTips,
       _themeModeKey: themeMode,
       _colorSchemeIdKey: colorSchemeId,
@@ -525,6 +529,7 @@ class StorageService {
       _focusSoundVolumeKey: focusSoundVolume,
       _dailyGoalMinutesKey: dailyGoalMinutes,
       _lastTaskCategoryIdKey: lastTaskCategoryId,
+      _lastTaskTitleKey: lastTaskTitle,
     };
   }
 

@@ -49,12 +49,7 @@ class ColorSchemeNotifier extends StateNotifier<AppColorScheme> {
   final StorageService _storage;
 
   ColorSchemeNotifier(this._storage)
-    : super(
-        appColorSchemes.firstWhere(
-          (s) => s.id == _storage.colorSchemeId,
-          orElse: () => appColorSchemes.first,
-        ),
-      );
+    : super(colorSchemeById(_storage.colorSchemeId));
 
   Future<void> setScheme(AppColorScheme scheme) async {
     state = scheme;
