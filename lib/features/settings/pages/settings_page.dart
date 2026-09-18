@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,12 +31,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   );
 
   bool _focusPresetExpanded = false;
+  FocusSoundCategory? _focusSoundCategory;
+  String? _previewingFocusSoundId;
   bool _isSearchingWikimedia = false;
   List<WikimediaAudioResult> _wikimediaResults = const [];
   String? _wikimediaStatus;
 
+  late final AudioService _audio;
+
+  @override
+  void initState() {
+    super.initState();
+    _audio = ref.read(audioServiceProvider);
+  }
+
   @override
   void dispose() {
+    if (_previewingFocusSoundId != null) {
+      unawaited(_audio.stopAmbient());
+    }
     _focusPresetController.dispose();
     _wikimediaQueryController.dispose();
     super.dispose();
@@ -71,7 +86,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             value: storage.alertVolume,
             onChanged: (value) async {
               await storage.setAlertVolume(value);
-              await ref.read(audioServiceProvider).setAlertVolume(value);
+              await _audio.setAlertVolume(value);
               setState(() {});
             },
           ),
@@ -86,14 +101,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _buildSectionHeader('专注背景音', theme),
           _buildSwitchTile(
             '开始专注时播放背景音',
-            '默认使用内置循环背景音，暂停或休息时会自动停止',
+            '内置 ${focusSoundscapes.length} 种离线合成环境音，暂停或休息时会自动停止',
             backgroundOn,
             (value) async {
               _markPresetCustom(storage);
               await storage.setFocusSoundEnabled(value);
               timerNotifier.syncCurrentFocusSoundFromSettings();
               if (!value) {
-                await ref.read(audioServiceProvider).stopAmbient();
+                await _stopFocusSoundPreview();
               }
               setState(() {});
             },
@@ -104,8 +119,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               theme,
               timerState.phase == TimerPhase.focusing,
             ),
-            if (storage.focusSoundSourceType ==
-                FocusSoundSourceType.builtIn)
+            if (storage.focusSoundSourceType == FocusSoundSourceType.builtIn)
               _buildSwitchTile(
                 '随机专注背景音',
                 '每次开始专注时自动随机选择一种内置背景音',
@@ -122,23 +136,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               value: storage.focusSoundVolume,
               onChanged: (value) async {
                 await storage.setFocusSoundVolume(value);
-                await ref.read(audioServiceProvider).setAmbientVolume(value);
+                await _audio.setAmbientVolume(value);
                 setState(() {});
               },
-            ),
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: ListTile(
-                leading: Icon(
-                  Icons.stop_circle_outlined,
-                  color: theme.colorScheme.primary,
-                ),
-                title: const Text('停止试听'),
-                subtitle: const Text('停止当前正在试听的专注背景音'),
-                onTap: () async {
-                  await ref.read(audioServiceProvider).stopAmbient();
-                },
-              ),
             ),
             _buildAdvancedWikiSection(
               storage,
@@ -295,7 +295,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Widget _buildSoundSelector(StorageService storage, ThemeData theme) {
     final selectedId = storage.selectedSoundId;
-    final audio = ref.read(audioServiceProvider);
     final selectedSound = builtInSounds.firstWhere(
       (sound) => sound.id == selectedId,
       orElse: () => builtInSounds.first,
@@ -339,7 +338,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     trailing: IconButton(
                       icon: const Icon(Icons.play_circle_outline_rounded),
                       onPressed: () async {
-                        await audio.playBuiltInSound(
+                        await _audio.playBuiltInSound(
                           sound,
                           volume: storage.alertVolume,
                         );
@@ -347,7 +346,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     onTap: () async {
                       await storage.setSelectedSoundId(sound.id);
-                      await audio.playBuiltInSound(
+                      await _audio.playBuiltInSound(
                         sound,
                         volume: storage.alertVolume,
                       );
@@ -369,83 +368,204 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ThemeData theme,
     bool isFocusing,
   ) {
-    final selectedId = storage.selectedFocusSoundId;
-    final audio = ref.read(audioServiceProvider);
-    final timerNotifier = ref.read(timerProvider.notifier);
-    final selectedSoundscape = focusSoundscapes.firstWhere(
-      (soundscape) => soundscape.id == selectedId,
-      orElse: () => focusSoundscapes.first,
-    );
+    final selected =
+        findFocusSoundscapeById(storage.selectedFocusSoundId) ??
+        focusSoundscapes.first;
+    final category = _focusSoundCategory ?? selected.category;
+    final previewing = _previewingFocusSoundId != null;
+    final previewingSound = previewing
+        ? findFocusSoundscapeById(_previewingFocusSoundId!)
+        : null;
+    final colorScheme = theme.colorScheme;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ExpansionTile(
-        leading: Icon(
-          Icons.graphic_eq_rounded,
-          color: theme.colorScheme.primary,
-        ),
-        title: Text(selectedSoundscape.name),
-        subtitle: const Text('默认内置循环，离线可用'),
-        children: [
-          for (final category in FocusSoundCategory.values) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Text(
-                '${category.label} · ${category.description}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            ...focusSoundscapes
-                .where((soundscape) => soundscape.category == category)
-                .map(
-                  (soundscape) => ListTile(
-                    dense: true,
-                    leading: Icon(
-                      soundscape.id == selectedId
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: soundscape.id == selectedId
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                    title: Text(soundscape.name),
-                    subtitle: Text(soundscape.description),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.play_circle_outline_rounded),
-                      onPressed: () async {
-                        await audio.playFocusSoundscape(
-                          soundscape,
-                          volume: storage.focusSoundVolume,
-                        );
-                      },
-                    ),
-                    onTap: () async {
-                      _markPresetCustom(storage);
-                      await storage.setFocusSoundSourceType(
-                        FocusSoundSourceType.builtIn,
-                      );
-                      await storage.setRandomFocusSoundMode(false);
-                      await storage.setSelectedFocusSoundId(soundscape.id);
-                      timerNotifier.syncCurrentFocusSoundFromSettings();
-                      if (!isFocusing) {
-                        await audio.playFocusSoundscape(
-                          soundscape,
-                          volume: storage.focusSoundVolume,
-                        );
-                      }
-                      if (!mounted) {
-                        return;
-                      }
-                      setState(() {});
-                    },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: colorScheme.primaryContainer,
+                  child: Text(
+                    selected.icon,
+                    style: const TextStyle(fontSize: 22),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        selected.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        selected.description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  tooltip: previewing ? '停止试听' : '试听',
+                  onPressed: isFocusing
+                      ? null
+                      : () => _toggleFocusSoundPreview(selected, storage),
+                  icon: Icon(
+                    previewing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SegmentedButton<FocusSoundCategory>(
+              segments: [
+                for (final item in FocusSoundCategory.values)
+                  ButtonSegment(value: item, label: Text(item.label)),
+              ],
+              selected: {category},
+              showSelectedIcon: false,
+              style: const ButtonStyle(visualDensity: VisualDensity.compact),
+              onSelectionChanged: (selection) {
+                setState(() {
+                  _focusSoundCategory = selection.first;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              category.description,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final soundscape in focusSoundscapes.where(
+                  (item) => item.category == category,
+                ))
+                  ChoiceChip(
+                    key: ValueKey('focus-sound-${soundscape.id}'),
+                    avatar: Text(
+                      soundscape.icon,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    label: Text(soundscape.name),
+                    selected: soundscape.id == selected.id,
+                    showCheckmark: false,
+                    onSelected: (_) =>
+                        _selectFocusSound(soundscape, storage, isFocusing),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  previewing
+                      ? Icons.graphic_eq_rounded
+                      : Icons.info_outline_rounded,
+                  size: 16,
+                  color: previewing
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isFocusing
+                        ? '专注中切换会直接替换当前背景音'
+                        : previewing
+                        ? '正在试听 · ${previewingSound?.name ?? ''}'
+                        : '点选即试听，音量可在下方调节',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: previewing
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                if (previewing)
+                  TextButton(
+                    onPressed: _stopFocusSoundPreview,
+                    child: const Text('停止'),
+                  ),
+              ],
+            ),
           ],
-        ],
+        ),
       ),
     );
+  }
+
+  Future<void> _selectFocusSound(
+    FocusSoundscape soundscape,
+    StorageService storage,
+    bool isFocusing,
+  ) async {
+    _markPresetCustom(storage);
+    await storage.setFocusSoundSourceType(FocusSoundSourceType.builtIn);
+    await storage.setRandomFocusSoundMode(false);
+    await storage.setSelectedFocusSoundId(soundscape.id);
+    ref.read(timerProvider.notifier).syncCurrentFocusSoundFromSettings();
+    if (!isFocusing) {
+      await _audio.playFocusSoundscape(
+        soundscape,
+        volume: storage.focusSoundVolume,
+      );
+      _previewingFocusSoundId = soundscape.id;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _focusSoundCategory = soundscape.category;
+    });
+  }
+
+  Future<void> _toggleFocusSoundPreview(
+    FocusSoundscape soundscape,
+    StorageService storage,
+  ) async {
+    if (_previewingFocusSoundId != null) {
+      await _stopFocusSoundPreview();
+      return;
+    }
+    await _audio.playFocusSoundscape(
+      soundscape,
+      volume: storage.focusSoundVolume,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _previewingFocusSoundId = soundscape.id;
+    });
+  }
+
+  Future<void> _stopFocusSoundPreview() async {
+    await _audio.stopAmbient();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _previewingFocusSoundId = null;
+    });
   }
 
   Widget _buildAdvancedWikiSection(
@@ -613,13 +733,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     WikimediaAudioResult result,
     StorageService storage,
   ) async {
-    await ref
-        .read(audioServiceProvider)
-        .playAmbientUrl(result.fileUrl, volume: storage.focusSoundVolume);
+    await _audio.playAmbientUrl(
+      result.fileUrl,
+      volume: storage.focusSoundVolume,
+    );
     if (!mounted) {
       return;
     }
     setState(() {
+      _previewingFocusSoundId = null;
       _wikimediaStatus = '正在试听 ${result.title}';
     });
   }
@@ -724,7 +846,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 await storage.applyFocusPreset(preset);
                 timerNotifier.syncCurrentFocusSoundFromSettings();
                 if (!isFocusing) {
-                  await ref.read(audioServiceProvider).stopAmbient();
+                  await _stopFocusSoundPreview();
                 }
                 _focusPresetController.collapse();
                 if (!mounted) {
@@ -970,7 +1092,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       }
 
       final payload = FocusBackupPayload.fromJsonString(raw);
-      await ref.read(audioServiceProvider).stopAll();
+      await _audio.stopAll();
+      _previewingFocusSoundId = null;
       await ref.read(storageServiceProvider).restoreBackup(payload);
       ref.read(focusSessionDraftProvider.notifier).restoreFromStorage();
       ref.invalidate(themeModeProvider);
