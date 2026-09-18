@@ -8,7 +8,15 @@ void playBuiltInSoundOnWeb(
   int pulseCount,
 ) {}
 
-void playToneOnWeb(double frequency, double duration, double volume) {}
+void playAmbientRecipeOnWeb(String recipeJson, double volume) {}
+
+void stopAmbientOnWeb() {}
+
+void pauseAmbientOnWeb() {}
+
+void resumeAmbientOnWeb() {}
+
+void setAmbientVolumeOnWeb(double volume) {}
 
 void requestWakeLockOnWeb() {}
 

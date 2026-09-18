@@ -9,6 +9,21 @@ external void _playFocusBellPattern(
   JSNumber pulseCount,
 );
 
+@JS('focusAmbientPlay')
+external void _focusAmbientPlay(JSString recipeJson, JSNumber volume);
+
+@JS('focusAmbientStop')
+external void _focusAmbientStop();
+
+@JS('focusAmbientPause')
+external void _focusAmbientPause();
+
+@JS('focusAmbientResume')
+external void _focusAmbientResume();
+
+@JS('focusAmbientSetVolume')
+external void _focusAmbientSetVolume(JSNumber volume);
+
 @JS('requestFocusWakeLock')
 external void _requestWakeLock();
 
@@ -33,8 +48,34 @@ void playBuiltInSoundOnWeb(
   } catch (_) {}
 }
 
-void playToneOnWeb(double frequency, double duration, double volume) {
-  playBuiltInSoundOnWeb(frequency, duration, volume, 'digital', 1);
+void playAmbientRecipeOnWeb(String recipeJson, double volume) {
+  try {
+    _focusAmbientPlay(recipeJson.toJS, volume.toJS);
+  } catch (_) {}
+}
+
+void stopAmbientOnWeb() {
+  try {
+    _focusAmbientStop();
+  } catch (_) {}
+}
+
+void pauseAmbientOnWeb() {
+  try {
+    _focusAmbientPause();
+  } catch (_) {}
+}
+
+void resumeAmbientOnWeb() {
+  try {
+    _focusAmbientResume();
+  } catch (_) {}
+}
+
+void setAmbientVolumeOnWeb(double volume) {
+  try {
+    _focusAmbientSetVolume(volume.toJS);
+  } catch (_) {}
 }
 
 void requestWakeLockOnWeb() {

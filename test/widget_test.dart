@@ -191,13 +191,6 @@ class SilentAudioService extends AudioService {
   }) async {}
 
   @override
-  Future<void> playTone({
-    double frequency = 440,
-    double durationSeconds = 1.0,
-    double volume = 0.7,
-  }) async {}
-
-  @override
   Future<void> playFocusSoundscape(
     FocusSoundscape soundscape, {
     double volume = 0.35,
